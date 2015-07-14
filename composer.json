@@ -2,6 +2,12 @@
     "name": "erliz/skyforge-bundle",
     "type": "project",
     "description": "Skyforge statistic parse bundle",
+    "authors": [
+        {
+            "name": "Stanislav Vetlovskiy",
+            "email": "mrerliz@gmail.com"
+        }
+    ],
     "autoload": {
         "psr-0": {
             "Erliz": "src/"
