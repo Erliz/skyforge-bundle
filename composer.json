@@ -1,5 +1,5 @@
 {
-    "name": "erliz-private/skyforge-bundle",
+    "name": "erliz/skyforge-bundle",
     "type": "project",
     "description": "Skyforge statistic parse bundle",
     "authors": [
