@@ -433,7 +433,7 @@ class ParseService
             foreach ($itemDataNodes as $key => $item) {
                 $itemDataNodes[$key] = mb_convert_encoding(trim($item), 'cp1252', 'utf-8');
             }
-            
+
             $storage[$itemDataNodes['id']] = (object) $itemDataNodes;
         }
 
@@ -447,7 +447,7 @@ class ParseService
      */
     private function getPlayerIdFromWallUrl($wallUrl)
     {
-        return preg_replace('/https:\/\/portal\.sf\.mail\.ru\/wall\/([0-9]+)/', '$1', $wallUrl);
+        return preg_replace('/*\/wall\/([0-9]+)/', '$1', $wallUrl);
     }
 
     /**
@@ -474,7 +474,7 @@ class ParseService
                 );
             } catch (RuntimeException $e) {
                 if ($e->getCode() == 403) {
-                   return json_decode('{}');
+                    return json_decode('{}');
                 }
                 throw $e;
             }
@@ -523,7 +523,7 @@ class ParseService
         $pantheonString = $pageXPath->query("//div[@class='avatar-stat']//div[@class='ubox-title']/a/@href");
         $pantheonId = null;
         if ($pantheonString->length) {
-            $pantheonId = preg_replace('/\/community\/([0-9]+)$/', '$1', $pantheonString->item(0)->textContent);
+            $pantheonId = preg_replace('/.*\/community\/([0-9]+)$/', '$1', $pantheonString->item(0)->textContent);
         }
 
         $memberPrestigeString = $pageXPath->query("//p[@class='avatar-rank b-tip']");
