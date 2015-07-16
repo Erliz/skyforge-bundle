@@ -64,8 +64,6 @@ EOF
             file_put_contents($lockFilePath, getmypid());
         }
         if ($playerId = $input->getOption('avatar')) {
-//            $player = $em->find('Erliz\SkyforgeBundle\Entity\Player', $playerId);
-//            $this->statService->updatePlayer($player->getId());
             $this->statService->updatePlayer($playerId);
         }
         if ($communityId = $input->getOption('id')) {

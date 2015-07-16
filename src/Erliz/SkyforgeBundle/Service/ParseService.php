@@ -523,10 +523,8 @@ class ParseService
         $pantheonString = $pageXPath->query("//div[@class='avatar-stat']//div[@class='ubox-title']/a/@href");
         $pantheonId = null;
         if ($pantheonString->length) {
-            $pantheonId = preg_replace('/\/community\/([0-9]+)\?page\=1/', '$1', $pantheonString->item(0)->textContent);
+            $pantheonId = preg_replace('/\/community\/([0-9]+)$', '$1', $pantheonString->item(0)->textContent);
         }
-
-
 
         $memberPrestigeString = $pageXPath->query("//p[@class='avatar-rank b-tip']");
         if ($memberPrestigeString->length > 0){

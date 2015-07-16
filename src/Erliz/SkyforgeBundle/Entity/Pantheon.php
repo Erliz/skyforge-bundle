@@ -13,7 +13,10 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Setting
  *
- * @ORM\Table(name="pantheon")
+ * @ORM\Table(
+ *    name="pantheon",
+ *    indexes={@ORM\Index(name="active", columns={"is_active"})}
+ * )
  * @ORM\Entity
  */
 class Pantheon implements CommunityInterface
