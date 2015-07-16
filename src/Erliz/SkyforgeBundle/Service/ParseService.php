@@ -447,7 +447,7 @@ class ParseService
      */
     private function getPlayerIdFromWallUrl($wallUrl)
     {
-        return preg_replace('/*\/wall\/([0-9]+)/', '$1', $wallUrl);
+        return preg_replace('/.*\/wall\/([0-9]+)/', '$1', $wallUrl);
     }
 
     /**
