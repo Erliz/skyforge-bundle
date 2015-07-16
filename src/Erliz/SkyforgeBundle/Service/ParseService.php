@@ -312,7 +312,7 @@ class ParseService
 
             $nameBlock = $infoXPath->query('//div[@class="ubox-title"]/a/@href');
             if ($nameBlock->length) {
-                $userId = $this->getPlayerIdFromWallUrl($nameBlock->item(0)->textContent);
+                $userId = $this->getIdFromUrl($nameBlock->item(0)->textContent);
             }
             // first row
             if (!$userId) {
@@ -382,6 +382,53 @@ class ParseService
         return $usersDonationInfo;
     }
 
+    public function getCommunities ($body)
+    {
+        $dom = $this->getPageDom($body);
+
+        $pageXPath = new DOMXpath($dom);
+
+
+        $communitiesDom = $pageXPath->query(
+            "//div[@class='card-wrap']"
+        );
+        if (!$communitiesDom->length) {
+            throw new RuntimeException('No communities found on page', 50);
+        }
+
+        $storage = array();
+
+        /** @var \DOMElement $menuItemDom */
+        foreach ($communitiesDom as $menuItemDom) {
+            $elementDom = new DOMDocument();
+            $elementDom->loadHTML($menuItemDom->ownerDocument->saveXML($menuItemDom));
+
+            $infoXPath = new DOMXPath($elementDom);
+
+            $pantheonTag = $infoXPath->query("//span[@class='guild-name-pre ']");
+            // need only pantheons
+            if (!$pantheonTag->length) {
+                continue;
+            }
+
+            $itemDataNodes = array(
+                'pic' => $infoXPath->query("//div[@class='upic-img']/a/img[@class=' b-tip']/@src")->item(0)->textContent,
+                'name' => $nameBlock = $infoXPath->query("//div[@class='ubox-title']/a")->item(0)->textContent,
+                'id' => $this->getIdFromUrl(
+                    $infoXPath->query("//div[@class='ubox-title']/a/@href")->item(0)->textContent
+                )
+            );
+
+            foreach ($itemDataNodes as $key => $item) {
+                $itemDataNodes[$key] = mb_convert_encoding(trim($item), 'cp1252', 'utf-8');
+            }
+
+            $storage[$itemDataNodes['id']] = (object) $itemDataNodes;
+        }
+
+        return $storage;
+    }
+
     /**
      * @param string $body
      *
@@ -426,7 +473,7 @@ class ParseService
                 'class' => $class,
                 'wall_url' => $infoXPath->query("//div[@class='ubox-title']/a/@href")->item(0)->textContent
             );
-            $itemDataNodes['id'] = $this->getPlayerIdFromWallUrl($itemDataNodes['wall_url']);
+            $itemDataNodes['id'] = $this->getIdFromUrl($itemDataNodes['wall_url']);
             unset($itemDataNodes['wall_url']);
 
             $itemDataNodes['name'] = preg_replace('/\n\s+\|/', '', $itemDataNodes['name']);
@@ -445,9 +492,9 @@ class ParseService
      *
      * @return string
      */
-    private function getPlayerIdFromWallUrl($wallUrl)
+    private function getIdFromUrl($wallUrl)
     {
-        return preg_replace('/.*\/wall\/([0-9]+)/', '$1', $wallUrl);
+        return preg_replace('/.*\/(?:wall|community)\/([0-9]+)/', '$1', $wallUrl);
     }
 
     /**
@@ -523,7 +570,7 @@ class ParseService
         $pantheonString = $pageXPath->query("//div[@class='avatar-stat']//div[@class='ubox-title']/a/@href");
         $pantheonId = null;
         if ($pantheonString->length) {
-            $pantheonId = preg_replace('/.*\/community\/([0-9]+)$/', '$1', $pantheonString->item(0)->textContent);
+            $pantheonId = $this->getIdFromUrl($pantheonString->item(0)->textContent);
         }
 
         $memberPrestigeString = $pageXPath->query("//p[@class='avatar-rank b-tip']");
