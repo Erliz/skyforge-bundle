@@ -16,11 +16,10 @@
     "require": {
         "php": ">=5.4",
         "erliz/silex-common-bundle": "dev-master",
-        "guzzlehttp/guzzle": "~4.2",
+        "guzzlehttp/guzzle": "~5.0",
         "gedmo/doctrine-extensions": "~2.3"
     },
     "require-dev": {
-        "phpunit/phpunit": "~4.7",
-        "namshi/cuzzle": "0.1.1"
+        "phpunit/phpunit": "~4.7"
     }
 }
