@@ -13,25 +13,24 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityRepository;
 use Erliz\SilexCommonBundle\Command\ApplicationAwareCommand;
 use Erliz\SkyforgeBundle\Entity\Pantheon;
-use Erliz\SkyforgeBundle\Repository\PlayerRepository;
 use Erliz\SkyforgeBundle\Service\ParseService;
+use Erliz\SkyforgeBundle\Service\RegionService;
 use Monolog\Logger;
 use RuntimeException;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class FindPantheonInfoCommand extends ApplicationAwareCommand
 {
     /** @var ParseService */
     private $parseService;
+    /** @var RegionService */
+    private $regionService;
     /** @var EntityManager */
     private $em;
-    /** @var PlayerRepository */
-    private $playerRepository;
     /** @var EntityRepository */
     private $pantheonRepository;
-    /** @var EntityRepository */
-    private $communityRepository;
     /** @var Logger */
     private $logger;
 
@@ -56,13 +55,17 @@ EOF
         $app = $this->getProjectApplication();
         $this->logger = $this->getLogger();
 
-        $this->em = $app['orm.em'];
+        $this->regionService = $app['region.skyforge.service'];
+        $this->regionService->setRegion($input->getOption('region'));
+
+        $this->em = $app['orm.ems'][$this->regionService->getDbConnectionNameByRegion()];
+
         $this->parseService = $app['parse.skyforge.service'];
-        $this->parseService->setAuthData($app['config']['skyforge']['statistic']);
+        $this->parseService->setAuthData($this->regionService->getCredentials());
 
         $this->pantheonRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Pantheon');
 
-        $lockFilePath = '/home/sites/erliz.ru/app/cache/curl/parse.lock';
+        $lockFilePath = $app['config']['app']['path'].'/cache/curl/parse.lock';
 
         if (is_file($lockFilePath)) {
             throw new \RuntimeException('Another parse in progress');
@@ -77,12 +80,12 @@ EOF
 
     private function makeCommunitiesUrl()
     {
-        return 'https://portal.sf.mail.ru/communities/';
+        return $this->regionService->getProjectUrl() . 'communities/';
     }
 
     private function makeCommunitiesMoreUrl()
     {
-        return 'https://portal.sf.mail.ru/communities.morebutton:loadbunch';
+        return $this->regionService->getProjectUrl() . 'communities.morebutton:loadbunch';
     }
 
     /**
@@ -139,7 +142,7 @@ EOF
     private function createDefinition()
     {
         return array(
-
+            new InputOption('region', 'r', InputOption::VALUE_REQUIRED, 'region of skyforge project'),
         );
     }
 }

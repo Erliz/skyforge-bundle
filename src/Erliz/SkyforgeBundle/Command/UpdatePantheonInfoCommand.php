@@ -18,6 +18,7 @@ use Erliz\SkyforgeBundle\Entity\Pantheon;
 use Erliz\SkyforgeBundle\Entity\Player;
 use Erliz\SkyforgeBundle\Repository\PlayerRepository;
 use Erliz\SkyforgeBundle\Service\ParseService;
+use Erliz\SkyforgeBundle\Service\RegionService;
 use Monolog\Logger;
 use RuntimeException;
 use Symfony\Component\Console\Input\InputInterface;
@@ -31,6 +32,8 @@ class UpdatePantheonInfoCommand extends ApplicationAwareCommand
 
     /** @var ParseService */
     private $parseService;
+    /** @var RegionService */
+    private $regionService;
     /** @var EntityManager */
     private $em;
     /** @var PlayerRepository */
@@ -63,14 +66,18 @@ EOF
         $app = $this->getProjectApplication();
         $this->logger = $this->getLogger();
 
-        $this->em = $app['orm.em'];
+        $this->regionService = $app['region.skyforge.service'];
+        $this->regionService->setRegion($input->getOption('region'));
+
+        $this->em = $app['orm.ems'][$this->regionService->getDbConnectionNameByRegion()];
+
         $this->parseService = $app['parse.skyforge.service'];
-        $this->parseService->setAuthData($app['config']['skyforge']['statistic']);
+        $this->parseService->setAuthData($this->regionService->getCredentials());
         $this->playerRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Player');
         $this->pantheonRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Pantheon');
         $this->communityRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Community');
 
-        $lockFilePath = '/home/sites/erliz.ru/app/cache/curl/parse.lock';
+        $lockFilePath = $app['config']['app']['path'].'/cache/curl/parse.lock';
 
         if (is_file($lockFilePath)) {
             throw new \RuntimeException('Another parse in progress');
@@ -109,12 +116,12 @@ EOF
 
     private function makeCommunityMembersUrl($id)
     {
-        return sprintf("https://portal.sf.mail.ru/community/members/%s", $id);
+        return sprintf($this->regionService->getProjectUrl() . "community/members/%s", $id);
     }
 
     private function makeCommunityMembersMoreUrl($id)
     {
-        return sprintf('https://portal.sf.mail.ru/community/members.morebutton:loadbunch?t:ac=%s', $id);
+        return sprintf($this->regionService->getProjectUrl() . 'community/members.morebutton:loadbunch?t:ac=%s', $id);
     }
 
     /**
@@ -126,26 +133,33 @@ EOF
     {
         $this->logger->addInfo(sprintf('Checking %s "%s" with %s', $type, $community->getName(), $community->getId()));
         $members = array();
-        try {
-            for($page = 1; $page <= 20; $page++) {
-                $responseMessage = $this->parseService->getPage(
-                    $this->makeCommunityMembersMoreUrl($community->getId()),
-                    true,
-                    $this->makeCommunityMembersUrl($community->getId()),
-                    array('t:zone' => 'bunchZone', 'bunchIndex' => $page)
-                );
-                $response = json_decode($responseMessage);
-                if (!$response) {
-                    $this->logger->addInfo(sprintf('Empty page %s', $page));
-                    break;
+        if ($this->regionService->getRegion() == RegionService::RU_REGION) {
+            try {
+                for($page = 1; $page <= 20; $page++) {
+                    $responseMessage = $this->parseService->getPage(
+                        $this->makeCommunityMembersMoreUrl($community->getId()),
+                        true,
+                        $this->makeCommunityMembersUrl($community->getId()),
+                        array('t:zone' => 'bunchZone', 'bunchIndex' => $page)
+                    );
+
+                    $response = json_decode($responseMessage);
+                    if (!$response) {
+                        $this->logger->addInfo(sprintf('Empty page %s', $page));
+                        break;
+                    }
+                    $pageMembers = $this->parseService->getMembersFromCommunityPage($response->content);
+                    $this->logger->addInfo(sprintf('Page %s parsed successful, get %s members', $page, count($pageMembers)));
+                    $members = $members + $pageMembers;
+                    usleep(rand(500, 1500) * 1000);
                 }
-                $pageMembers = $this->parseService->getMembersFromCommunityPage($response->content);
-                $this->logger->addInfo(sprintf('Page %s parsed successful, get %s members', $page, count($pageMembers)));
-                $members = $members + $pageMembers;
-                usleep(rand(500, 1500) * 1000);
+            } catch (RuntimeException $e) {
+                $this->logger->addInfo('Exception: ' . $e->getMessage() . ' ' . $e->getCode());
             }
-        } catch (RuntimeException $e) {
-            $this->logger->addInfo('Exception: ' . $e->getMessage() . ' ' . $e->getCode());
+        } else {
+            $response = $this->parseService->getPage($this->makeCommunityMembersUrl($community->getId()));
+            $members = $this->parseService->getMembersFromCommunityPage($response);
+            $this->logger->addInfo(sprintf('Page %s parsed successful, get %s members', 1, count($members)));
         }
 
         if ($type == $this::TYPE_PANTHEON) {
@@ -181,6 +195,8 @@ EOF
             }
             if ($parsedMember->nick) {
                 $player->setNick($parsedMember->nick);
+            } else {
+                $player->setNick('');
             }
 
             $community->addMember($player);
@@ -195,14 +211,17 @@ EOF
 
         $community->setUpdatedAt(new DateTime());
         $this->em->flush();
+
+        usleep(rand(500, 1500) * 1000);
     }
 
     private function createDefinition()
     {
         return array(
+            new InputOption('region', 'r', InputOption::VALUE_REQUIRED, 'region of skyforge project'),
             new InputOption('pantheons', 'p', InputOption::VALUE_NONE, 'flag to parse pantheons'),
             new InputOption('communities', 'c', InputOption::VALUE_NONE, 'flag to parse communities'),
-            new InputOption('id', 'i', InputOption::VALUE_REQUIRED, 'id of community to parse')
+            new InputOption('id', 'i', InputOption::VALUE_REQUIRED, 'id of community to parse'),
         );
     }
 }

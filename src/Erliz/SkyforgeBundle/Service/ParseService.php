@@ -10,31 +10,35 @@ namespace Erliz\SkyforgeBundle\Service;
 use DOMDocument;
 use DOMXPath;
 use GuzzleHttp\Client as Client;
-use Erliz\SkyforgeBundle\Extension\Client\CookieJar;
-use GuzzleHttp\Cookie\SetCookie;
+use GuzzleHttp\Cookie\FileCookieJar;
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Message\ResponseInterface;
 use GuzzleHttp\Post\PostBodyInterface;
 use GuzzleHttp\Subscriber\Cookie;
+use GuzzleHttp\Subscriber\History;
 use RuntimeException;
 
 class ParseService
 {
     /** @var Client */
     private $client;
-    /** @var CookieJar */
+    /** @var FileCookieJar */
     private $cookieJar;
     /** @var string */
-    private $cookieFile = '/home/sites/erliz.ru/app/cache/curl/cookie_%s.json';
-    /** @var array */
-    private $config;
+    private $cookieFile;
     /** @var array */
     private $authData;
     /** @var bool */
     private $tryAuthorize = false;
+    /** @var RegionService */
+    private $regionService;
+    /** @var History */
+    private $history;
 
-    public function __construct(array $config)
+    public function __construct(RegionService $regionService, $cachePath)
     {
-        $this->config = $config;
+        $this->cookieFile = $cachePath . 'curl/cookie_%s.json';
+        $this->regionService = $regionService;
     }
 
     /**
@@ -76,8 +80,8 @@ class ParseService
             'Accept-Language' => 'ru,en-US;q=0.8,en;q=0.6',
             'Accept-Encoding' => 'gzip, deflate',
             'Cache-Control'   => 'no-cache',
-            'Host'            => 'portal.sf.mail.ru',
-            'Origin'          => 'https://portal.sf.mail.ru'
+            'Host'            => $this->regionService->makeProjectDomain($this->regionService->getRegion()),
+            'Origin'          => 'https://' . $this->regionService->makeProjectDomain($this->regionService->getRegion())
         );
     }
 
@@ -195,6 +199,8 @@ class ParseService
 
     public function sendMessage($playerId, $message)
     {
+        throw new RuntimeException('Deprecated function');
+
         $url = sprintf('https://portal.sf.mail.ru/skyforgenews.layout.contactio.outgoingmessagefield:sendmessageevent');
         $this->createClient();
         $headers = $this->createHeaders();
@@ -230,39 +236,50 @@ class ParseService
         }
 
         libxml_use_internal_errors(true);
-        $this->cookieJar = new CookieJar();
+//        $this->cookieJar = new CookieJar();
+//        if (is_readable($this->getCookieFile())) {
+//            $fileData = file_get_contents($this->getCookieFile());
+//            if (!json_decode($fileData)) {
+//                file_put_contents($this->getCookieFile(), json_encode($this->convertJarFromNetscapeToJson($fileData)));
+//            }
+//        }
+//        exit;
+        $this->cookieJar = new FileCookieJar($this->getCookieFile());
+        $this->history = new History();
 
-        if (file_exists($this->getCookieFile()) && !$cookieless) {
-            foreach (json_decode(file_get_contents($this->getCookieFile())) as $cookie) {
-                $this->cookieJar->setCookie(new SetCookie((array) $cookie));
-            }
-        }
-        $this->client = new Client(array('defaults'=>array('subscribers'=>array(new Cookie($this->cookieJar)))));
+//        if (!$cookieless) {
+//            $this->cookieFile->load($this->cookieFile);
+//        }
+
+
+        $this->client = new Client(array('defaults'=>array('subscribers'=>array(new Cookie($this->cookieJar), $this->history))));
     }
 
     private function exportCookie()
     {
-        $exportCookie = array();
-        /** @var SetCookie $cookie */
-        foreach ($this->cookieJar->toArray() as $cookie) {
-            $exportCookie[] = $cookie;
-        }
-
-        file_put_contents($this->getCookieFile(), json_encode($exportCookie));
+        $this->cookieJar->save($this->getCookieFile());
     }
 
     private function authorize()
     {
         $this->createClient(true, true);
 
-        // get mpop cookie
-        $this->client->get(
-            sprintf('https://auth.mail.ru/cgi-bin/auth?Login=%s&Password=%s&Page=https://portal.sf.mail.ru/skyforgenews', $this->getAuthData()['login'], $this->getAuthData()['password'])
-        );
+        $authOptions = $this->regionService->getAuthOptions();
 
-        $this->client->get('https://portal.sf.mail.ru/skyforgenews');
+        /** @var ResponseInterface $response */
+        if ($authOptions['method'] == 'GET') {
+            $response = $this->client->get($authOptions['url']);
+        } elseif ($authOptions['method'] == 'POST') {
+            $response = $this->client->post($authOptions['url'], array('body'=>$authOptions['data']));
+        }
+
+//        $this->client->get($this->regionService->getProjectUrl() . 'skyforgenews');
 
         $this->exportCookie();
+
+//        foreach ($this->history->getRequests() as $request) {
+//            echo $request->getUrl() ."\n";
+//        }
 
         echo "authorize!\n";
         $this->tryAuthorize = true;
@@ -607,7 +624,10 @@ class ParseService
         }
         $titleText = $titleDom->item(0)->textContent;
 
-        return !in_array($titleText, array('Вы не аутентифицированы', 'Нет доступа'));
+        return !in_array(
+            $titleText,
+            array('Вы не аутентифицированы', 'Нет доступа', 'You are not logged in', 'No access')
+        );
     }
 
     private function isServerUpdating($body)
@@ -623,5 +643,57 @@ class ParseService
         $titleText = $titleDom->item(0)->textContent;
 
         return $titleText == 'Skyforge - обновление';
+    }
+
+    /**
+     * @param string $fileData
+     *
+     * @return array
+     */
+    private function convertJarFromNetscapeToJson($fileData)
+    {
+        $cookies = array();
+
+        $lines = explode("\n", $fileData);
+
+        // iterate over lines
+        foreach ($lines as $line) {
+
+            // we only care for valid cookie def lines
+            if (isset($line[0]) && substr_count($line, "\t") == 6) {
+
+                // get tokens in an array
+                $tokens = explode("\t", $line);
+
+                // trim the tokens
+                $tokens = array_map('trim', $tokens);
+                $isHttpOnly = false;
+                $cookie = array();
+
+                $domainFlags = explode('_', $tokens[0]);
+                if ($domainFlags[0] == '#HttpOnly') {
+                    $tokens[0] = $domainFlags[1];
+                    $isHttpOnly = true;
+                }
+
+                // Extract the data
+                $cookie['Domain'] = $tokens[0];
+                $cookie['Discard'] = $tokens[1];
+                $cookie['Path'] = $tokens[2];
+                $cookie['Secure'] = $tokens[3];
+
+                // Convert date to a readable format
+                $cookie['Expires'] = date('@t', $tokens[4]);
+
+                $cookie['Name'] = $tokens[5];
+                $cookie['Value'] = $tokens[6];
+                $cookie['HttpOnly'] = $isHttpOnly;
+
+                // Record the cookie.
+                $cookies[] = $cookie;
+            }
+        }
+
+        return $cookies;
     }
 }
