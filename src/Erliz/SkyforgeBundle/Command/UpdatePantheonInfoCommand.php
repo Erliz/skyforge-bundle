@@ -98,9 +98,16 @@ EOF
                 $this->updateCommunityMembers($community, $output, $type);
             }
         }
+//        $na=true;
         if ($input->getOption('pantheons')) {
             /** @var Pantheon $community */
             foreach ($this->pantheonRepository->findAll() as $community) {
+//                if($community->getId()=='243083329203602405'){
+//                    $na=false;
+//                }
+//                if($na){
+//                    continue;
+//                }
                 $this->updateCommunityMembers($community, $output, $this::TYPE_PANTHEON);
             }
         }
@@ -158,7 +165,15 @@ EOF
             }
         } else {
             $response = $this->parseService->getPage($this->makeCommunityMembersUrl($community->getId()));
-            $members = $this->parseService->getMembersFromCommunityPage($response);
+            try {
+                $members = $this->parseService->getMembersFromCommunityPage($response);
+            } catch (RuntimeException $e) {
+                if ($e->getCode() == 50) {
+                    $this->logger->addWarning($e->getMessage());
+                } else {
+                    throw $e;
+                }
+            }
             $this->logger->addInfo(sprintf('Page %s parsed successful, get %s members', 1, count($members)));
         }
 
@@ -181,7 +196,7 @@ EOF
             }
         }
 
-        $this->em->flush();
+//        $this->em->flush();
 
         foreach ($members as $parsedMember) {
             $player = $this->playerRepository->find($parsedMember->id);

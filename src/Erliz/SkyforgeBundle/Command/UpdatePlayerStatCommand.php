@@ -13,6 +13,7 @@ use Erliz\SilexCommonBundle\Command\ApplicationAwareCommand;
 use Erliz\SkyforgeBundle\Entity\Community;
 use Erliz\SkyforgeBundle\Entity\CommunityInterface;
 use Erliz\SkyforgeBundle\Entity\Pantheon;
+use Erliz\SkyforgeBundle\Service\RegionService;
 use Erliz\SkyforgeBundle\Service\StatService;
 use Monolog\Logger;
 use RuntimeException;
@@ -27,6 +28,10 @@ class UpdatePlayerStatCommand extends ApplicationAwareCommand
     private $statService;
     /** @var Logger */
     private $logger;
+    /** @var RegionService */
+    private $regionService;
+    /** @var EntityManager */
+    private $em;
 
     /**
      * {@inheritdoc}
@@ -49,14 +54,17 @@ EOF
         $app = $this->getProjectApplication();
         $this->logger = $this->getLogger();
 
+        $this->regionService = $app['region.skyforge.service'];
+        $this->regionService->setRegion($input->getOption('region'));
+
         /** @var EntityManager $em */
-        $em = $app['orm.em'];
+        $this->em = $app['orm.ems'][$this->regionService->getDbConnectionNameByRegion()];
         /** @var StatService $statService */
         $this->statService = $app['stat.skyforge.service'];
-        $pantheonRepository = $em->getRepository('Erliz\SkyforgeBundle\Entity\Pantheon');
-        $communityRepository = $em->getRepository('Erliz\SkyforgeBundle\Entity\Community');
+        $pantheonRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Pantheon');
+        $communityRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Community');
 
-        $lockFilePath = '/home/sites/erliz.ru/app/cache/curl/parse.lock';
+        $lockFilePath = $app['config']['app']['path'].'/cache/curl/parse.lock';
 
         if (is_file($lockFilePath)) {
             throw new RuntimeException('Another parse in progress');
@@ -64,7 +72,7 @@ EOF
             file_put_contents($lockFilePath, getmypid());
         }
         if ($playerId = $input->getOption('avatar')) {
-            $this->statService->updatePlayer($playerId);
+            $this->statService->updatePlayer($playerId, true);
         }
         if ($communityId = $input->getOption('id')) {
             $community = $communityRepository->find($communityId);
@@ -77,20 +85,38 @@ EOF
                 $this->updateCommunityMembers($community, $output);
             }
         }
+//        $no=true;
         if ($input->getOption('pantheons')) {
             /** @var Pantheon $community */
             foreach ($pantheonRepository->findAll() as $community) {
+//                if ($community->getId() == '243083329203601603'){
+//                    $no=false;
+//                }
+//                if($no){
+//                    continue;
+//                }
                 $this->updateCommunityMembers($community, $output);
+                $this->flush();
+//                $this->em->detach($community);
             }
         }
         if ($input->getOption('communities')) {
             /** @var Community $community */
             foreach ($communityRepository->findAll() as $community) {
                 $this->updateCommunityMembers($community, $output);
+                $this->flush();
             }
         }
 
         unlink($lockFilePath);
+    }
+
+    private function flush()
+    {
+        $flushTimeStart = microtime(true);
+        $this->em->flush();
+//        $this->em->clear('Erliz\SkyforgeBundle\Entity\Player');
+        $this->logger->addInfo(sprintf('Flush db take %s sec to proceed', microtime(true) - $flushTimeStart ));
     }
 
     /**
@@ -103,7 +129,7 @@ EOF
 
         $today = new \DateTime('-4 hour');
         $loopTimeStart = microtime(true);
-
+        $failsCount = 0 ;
         if ($output->isVerbose()) {
             $this->logger->addInfo(sprintf('Found %s members', count($community->getMembers())));
         }
@@ -126,6 +152,10 @@ EOF
                 $this->statService->updatePlayer($player->getId());
             } catch (RuntimeException $e){
                 if ($e->getCode() == 403) {
+                    $failsCount ++;
+                    if ($failsCount >= 10) {
+                        throw $e;
+                    }
                     $this->logger->addInfo(sprintf('Fail to update player "%s" with id %s', $player->getNick(), $player->getId()));
                 } else {
                     throw $e;
@@ -141,6 +171,7 @@ EOF
             }
             usleep($sleepMicroTime);
         }
+
         if ($output->isVerbose()) {
             $this->logger->addInfo(sprintf('Loop take %s sec to process', microtime(true) - $loopTimeStart));
         }
@@ -152,6 +183,7 @@ EOF
     private function createDefinition()
     {
         return array(
+            new InputOption('region', 'r', InputOption::VALUE_REQUIRED, 'region of skyforge project'),
             new InputOption('pantheons', 'p', InputOption::VALUE_NONE, 'flag to parse pantheons'),
             new InputOption('communities', 'c', InputOption::VALUE_NONE, 'flag to parse communities'),
             new InputOption('id', 'i', InputOption::VALUE_REQUIRED, 'id of community to parse'),

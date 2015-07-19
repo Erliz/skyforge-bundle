@@ -8,6 +8,7 @@
 namespace Erliz\SkyforgeBundle\Service;
 
 
+use Doctrine\ORM\Cache\Region;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityRepository;
 use Erliz\SilexCommonBundle\Service\ApplicationAwareService;
@@ -27,6 +28,7 @@ class StatService extends ApplicationAwareService
     const PVP_TYPE = "RULE_TYPE_PVP";
     const SOLO_TYPE = "RULE_TYPE_SOLO";
 
+
     /** @var EntityRepository $dateStatRepo */
     private $dateStatRepo;
     /** @var EntityRepository $dateRoleRepo */
@@ -39,6 +41,8 @@ class StatService extends ApplicationAwareService
     private $playerRepo;
     /** @var Logger */
     private $logger;
+    /** @var RegionService */
+    private $regionService;
 
     public function __construct(Application $application)
     {
@@ -53,29 +57,55 @@ class StatService extends ApplicationAwareService
         $this->pantheonRepo = $em->getRepository('Erliz\SkyforgeBundle\Entity\Pantheon');
         $this->roleRepo = $em->getRepository('Erliz\SkyforgeBundle\Entity\Role');
         $this->playerRepo = $em->getRepository('Erliz\SkyforgeBundle\Entity\Player');
+
+        $this->regionService = $this->getApp()['region.skyforge.service'];
     }
 
     /**
-     * @param $playerId
+     * @param string $playerId
+     *
+     * @return string
      */
-    public function updatePlayer($playerId)
+    public function makeStatUrlByPlayerId($playerId)
+    {
+        return sprintf('%sapi/game/stats/StatsApi:getAvatarStats/%s', $this->regionService->getProjectUrl(), $playerId);
+    }
+
+    /**
+     * @param string $playerId
+     *
+     * @return string
+     */
+    public function makeProfileUrlByPlayerId($playerId)
+    {
+        return sprintf('%s/user/avatar/%s', $this->regionService->getProjectUrl(), $playerId);
+    }
+
+    /**
+     * @param string $playerId
+     */
+    public function updatePlayer($playerId, $withFlush = false)
     {
         $app = $this->getApp();
         /** @var EntityManager $em */
         $em = $this->getEntityManager();
         /** @var ParseService $parseService */
         $parseService = $app['parse.skyforge.service'];
-        $parseService->setAuthData($app['config']['skyforge']['statistic']);
+        $parseService->setAuthData($this->regionService->getCredentials());
 
         /** @var Player $player */
         $player = $this->playerRepo->find($playerId);
         try {
             $avatarDataTimeStart = microtime(true);
-            $avatarData = $parseService->getDataFromProfilePage($playerId);
+
+            $avatarData = $parseService->getDataFromProfilePage(
+                $parseService->getPage($this->makeProfileUrlByPlayerId($playerId))
+            );
+
             $this->logger->addInfo(sprintf('Avatar data take %s sec to proceed', microtime(true) - $avatarDataTimeStart));
 
             $statDataTimeStart = microtime(true);
-            $statData = $parseService->getPlayerStat($playerId);
+            $statData = json_decode($parseService->getPage($this->makeStatUrlByPlayerId($playerId), true));
             $this->logger->addInfo(sprintf('Stat data take %s sec to proceed', microtime(true) - $statDataTimeStart));
         } catch (RuntimeException $e) {
             if ($e->getCode() == 403) {
@@ -140,7 +170,6 @@ class StatService extends ApplicationAwareService
                      ->setPantheon($currentPantheon)
                      ->setTotalTime($totalTime)
 //                     ->setSoloTime($this->getTimeSpentByAdventureType($statData->adventureStats->byAdventureStats, $this::SOLO_TYPE))
-                     ->setPvpTime($this->getTimeSpentByAdventureType($statData->adventureStats->byAdventureStats, $this::PVP_TYPE))
                      ->setCurrentPrestige($avatarData['prestige']['current'])
                      ->setMaxPrestige($avatarData['prestige']['max'])
                      ->setPveMobKills($dayStat->pveMobKills)
@@ -149,6 +178,10 @@ class StatService extends ApplicationAwareService
                      ->setPvpKills($dayStat->pvpKills)
                      ->setPvpDeaths($dayStat->pvpDeaths)
                      ->setPvpAssists($dayStat->pvpAssists);
+
+            if (isset($statData->adventureStats) && isset($statData->adventureStats->byAdventureStats)) {
+                $dateStat->setPvpTime($this->getTimeSpentByAdventureType($statData->adventureStats->byAdventureStats, $this::PVP_TYPE));
+            }
 
             $em->persist($dateStat);
         }
@@ -180,9 +213,12 @@ class StatService extends ApplicationAwareService
         }
         $this->logger->addInfo(sprintf('Class stat take %s sec to proceed', microtime(true) - $classStatsLoopTimeStart));
 
-        $flushTimeStart = microtime(true);
-        $em->flush();
-        $this->logger->addInfo(sprintf('Flush db take %s sec to proceed', microtime(true) - $flushTimeStart ));
+        if ($withFlush) {
+            $flushTimeStart = microtime(true);
+            $em->flush();
+            $this->logger->addInfo(sprintf('Flush db take %s sec to proceed', microtime(true) - $flushTimeStart ));
+        }
+
     }
 
     /**

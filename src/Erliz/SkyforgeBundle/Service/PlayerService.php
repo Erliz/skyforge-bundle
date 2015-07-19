@@ -30,12 +30,14 @@ class PlayerService extends ApplicationAwareService
             from Erliz\SkyforgeBundle\Entity\Player p
                  join p.dateStat pds
                  join p.pantheon pt
-            where pt.isActive = 1
-                and p.name is not null
+            where
+                 p.name is not null
             group by pds.player
             order by maxPrestige DESC
         ';
 
-        return new PlayerCollection($this->getEntityManager()->createQuery($dql)->getResult(Query::HYDRATE_ARRAY));
+        return new PlayerCollection(
+            $this->getEntityManager()->createQuery($dql)->setMaxResults(1000)->getResult(Query::HYDRATE_ARRAY)
+        );
     }
 }

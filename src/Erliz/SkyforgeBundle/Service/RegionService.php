@@ -99,7 +99,15 @@ class RegionService extends ApplicationAwareService
      */
     public function getProjectUrl()
     {
-        return sprintf('https://%s/', self::makeProjectDomain($this->getRegion()));
+        return sprintf('https://%s/', $this->getProjectDomain());
+    }
+
+    /**
+     * @return string
+     */
+    public function getProjectDomain()
+    {
+        return self::makeProjectDomain($this->getRegion());
     }
 
     public function getAuthOptions()

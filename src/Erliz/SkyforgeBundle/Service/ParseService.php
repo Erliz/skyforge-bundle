@@ -9,8 +9,8 @@ namespace Erliz\SkyforgeBundle\Service;
 
 use DOMDocument;
 use DOMXPath;
+use Erliz\SkyforgeBundle\Extension\Client\CookieJar;
 use GuzzleHttp\Client as Client;
-use GuzzleHttp\Cookie\FileCookieJar;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Message\ResponseInterface;
 use GuzzleHttp\Post\PostBodyInterface;
@@ -22,7 +22,7 @@ class ParseService
 {
     /** @var Client */
     private $client;
-    /** @var FileCookieJar */
+    /** @var CookieJar */
     private $cookieJar;
     /** @var string */
     private $cookieFile;
@@ -104,11 +104,11 @@ class ParseService
     {
         $headers['X-Requested-With'] = 'XMLHttpRequest';
 
-        $token = $this->cookieJar->getCookieValueByName('csrf_token');
+        $token = $this->cookieJar->getCookieValueByName('csrf_token', $this->regionService->getProjectDomain());
 
         if (!$token) {
             $this->authorize();
-            $token = $this->cookieJar->getCookieValueByName('csrf_token');
+            $token = $this->cookieJar->getCookieValueByName('csrf_token', $this->regionService->getProjectDomain());
         }
 
         if (strpos($url, '?') === false) {
@@ -244,7 +244,7 @@ class ParseService
 //            }
 //        }
 //        exit;
-        $this->cookieJar = new FileCookieJar($this->getCookieFile());
+        $this->cookieJar = new CookieJar($this->getCookieFile());
         $this->history = new History();
 
 //        if (!$cookieless) {
@@ -553,36 +553,24 @@ class ParseService
     }
 
     /**
-     * @param $playerId
-     *
-     * @return \stdClass
-     */
-    public function getPlayerStat($playerId)
-    {
-        $playerStatUrlTemplate = 'https://portal.sf.mail.ru/api/game/stats/StatsApi:getAvatarStats/%s';
-        $responseMessage = $this->getPage(sprintf($playerStatUrlTemplate, $playerId), true);
-
-        return json_decode($responseMessage);
-    }
-
-    /**
-     * @param int $id
+     * @param string $body
      *
      * @return array|bool
      */
-    public function getDataFromProfilePage($id)
+    public function getDataFromProfilePage($body)
     {
-        $profileUrlTemplate = 'https://portal.sf.mail.ru/user/avatar/%s';
-        $responseMessage = $this->getPage(sprintf($profileUrlTemplate, $id));
-
-        $pageXPath = new DOMXpath($this->getPageDom($responseMessage));
-        if (!$pageXPath->query("//div[@class='s-avatar_info']")->item(0)->hasChildNodes()) {
+        $pageXPath = new DOMXpath($this->getPageDom($body));
+        if (!$pageXPath->query("//div[@class='s-avatar_info']")->item(0) || !$pageXPath->query("//div[@class='s-avatar_info']")->item(0)->hasChildNodes()) {
             throw new RuntimeException('Profile have no avatar data', 403);
         }
 
         $nick = $pageXPath->query("//div[@class='ubox-title']/span")->item(0)->textContent;
         $img = $pageXPath->query("//div[@class='upic-img']/img/@src")->item(0)->textContent;
-        $name = $pageXPath->query("//p[@class='avatar__name']/span")->item(0)->textContent;
+        if ($pageXPath->query("//p[@class='avatar__name']/span")->item(0)) {
+            $name = $pageXPath->query("//p[@class='avatar__name']/span")->item(0)->textContent;
+        } else {
+            $name = '';
+        }
         $role = $pageXPath->query("//p[@class='avatar-rank']/span")->item(0)->textContent;
         $pantheonString = $pageXPath->query("//div[@class='avatar-stat']//div[@class='ubox-title']/a/@href");
         $pantheonId = null;

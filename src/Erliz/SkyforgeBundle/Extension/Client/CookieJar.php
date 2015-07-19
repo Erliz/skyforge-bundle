@@ -7,7 +7,7 @@
 namespace Erliz\SkyforgeBundle\Extension\Client;
 
 
-use GuzzleHttp\Cookie\CookieJar as BaseCookieJar;
+use GuzzleHttp\Cookie\FileCookieJar as BaseCookieJar;
 
 class CookieJar extends BaseCookieJar
 {
@@ -16,10 +16,14 @@ class CookieJar extends BaseCookieJar
      *
      * @return null|string
      */
-    public function getCookieValueByName($name)
+    public function getCookieValueByName($name, $domain = null)
     {
         foreach ($this->toArray() as $cookie) {
             if($cookie['Name'] == $name) {
+                if ($domain && $domain != $cookie['Domain']) {
+                    continue;
+                }
+
                 return $cookie['Value'];
             }
         }
