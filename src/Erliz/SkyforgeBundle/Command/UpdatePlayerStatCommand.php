@@ -85,24 +85,28 @@ EOF
                 $this->updateCommunityMembers($community, $output);
             }
         }
-//        $no=true;
+        $lastId = $input->getOption('lastId');
         if ($input->getOption('pantheons')) {
             /** @var Pantheon $community */
             foreach ($pantheonRepository->findAll() as $community) {
-//                if ($community->getId() == '243083329203601603'){
-//                    $no=false;
-//                }
-//                if($no){
-//                    continue;
-//                }
+                if ($community->getId() == $lastId){
+                    $lastId = false;
+                }
+                if ($lastId) {
+                    continue;
+                }
                 $this->updateCommunityMembers($community, $output);
                 $this->flush();
-//                $this->em->detach($community);
             }
-        }
-        if ($input->getOption('communities')) {
+        } else if ($input->getOption('communities')) {
             /** @var Community $community */
             foreach ($communityRepository->findAll() as $community) {
+                if ($community->getId() == $lastId){
+                    $lastId = false;
+                }
+                if ($lastId) {
+                    continue;
+                }
                 $this->updateCommunityMembers($community, $output);
                 $this->flush();
             }
@@ -187,6 +191,7 @@ EOF
             new InputOption('pantheons', 'p', InputOption::VALUE_NONE, 'flag to parse pantheons'),
             new InputOption('communities', 'c', InputOption::VALUE_NONE, 'flag to parse communities'),
             new InputOption('id', 'i', InputOption::VALUE_REQUIRED, 'id of community to parse'),
+            new InputOption('lastId', 'l', InputOption::VALUE_REQUIRED, 'id of community to parse'),
             new InputOption('avatar', 'a', InputOption::VALUE_REQUIRED, 'id of avatar to parse')
         );
     }

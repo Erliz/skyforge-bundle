@@ -52,6 +52,14 @@ class Pantheon implements CommunityInterface
     private $members;
 
     /**
+     * @var PantheonDateStat[]
+     *
+     * @ORM\OneToMany(targetEntity="PantheonDateStat", mappedBy="pantheon")
+     * @ORM\OrderBy({"date" = "DESC"})
+     */
+    private $dateStat;
+
+    /**
      * @var int
      *
      * @ORM\Column(name="is_active", type="integer")
@@ -210,6 +218,26 @@ class Pantheon implements CommunityInterface
         if(!$members->contains($player)) {
             $members->add($player);
         }
+
+        return $this;
+    }
+
+    /**
+     * @return PantheonDateStat[]
+     */
+    public function getDateStat()
+    {
+        return $this->dateStat;
+    }
+
+    /**
+     * @param PantheonDateStat[] $dateStat
+     *
+     * @return $this
+     */
+    public function setDateStat($dateStat)
+    {
+        $this->dateStat = $dateStat;
 
         return $this;
     }

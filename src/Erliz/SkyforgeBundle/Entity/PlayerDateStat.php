@@ -143,7 +143,7 @@ class PlayerDateStat
             return 0;
         }
 
-        return round($this->pvpKills / $this->pvpDeaths, 2);
+        return round(($this->pvpKills + $this->pvpAssists * 0.25) / $this->pvpDeaths, 2);
     }
 
     /**
