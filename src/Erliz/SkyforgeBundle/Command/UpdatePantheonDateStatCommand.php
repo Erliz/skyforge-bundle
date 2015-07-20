@@ -73,7 +73,7 @@ EOF
             }
         }
 
-//        $this->em->flush();
+        $this->em->flush();
 
     }
 
@@ -157,7 +157,6 @@ EOF
             ;
 
         $this->em->persist($newPantheonDateStat);
-        $this->em->flush();
     }
 
     private function createDefinition()

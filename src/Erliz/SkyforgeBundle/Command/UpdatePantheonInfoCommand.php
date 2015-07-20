@@ -98,22 +98,28 @@ EOF
                 $this->updateCommunityMembers($community, $output, $type);
             }
         }
-//        $na=true;
+        $lastId = $input->getOption('lastId');
         if ($input->getOption('pantheons')) {
             /** @var Pantheon $community */
             foreach ($this->pantheonRepository->findAll() as $community) {
-//                if($community->getId()=='243083329203602405'){
-//                    $na=false;
-//                }
-//                if($na){
-//                    continue;
-//                }
+                if ($community->getId() == $lastId){
+                    $lastId = false;
+                }
+                if ($lastId) {
+                    continue;
+                }
                 $this->updateCommunityMembers($community, $output, $this::TYPE_PANTHEON);
             }
         }
         if ($input->getOption('communities')) {
             /** @var Community $community */
             foreach ($this->communityRepository->findAll() as $community) {
+                if ($community->getId() == $lastId){
+                    $lastId = false;
+                }
+                if ($lastId) {
+                    continue;
+                }
                 $this->updateCommunityMembers($community, $output, $this::TYPE_COMMUNITY);
             }
         }
@@ -236,6 +242,7 @@ EOF
             new InputOption('region', 'r', InputOption::VALUE_REQUIRED, 'region of skyforge project'),
             new InputOption('pantheons', 'p', InputOption::VALUE_NONE, 'flag to parse pantheons'),
             new InputOption('communities', 'c', InputOption::VALUE_NONE, 'flag to parse communities'),
+            new InputOption('lastId', 'l', InputOption::VALUE_REQUIRED, 'id of community to parse'),
             new InputOption('id', 'i', InputOption::VALUE_REQUIRED, 'id of community to parse'),
         );
     }
