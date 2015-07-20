@@ -273,7 +273,7 @@ class ParseService
             $response = $this->client->post($authOptions['url'], array('body'=>$authOptions['data']));
         }
 
-//        $this->client->get($this->regionService->getProjectUrl() . 'skyforgenews');
+        $this->client->get($this->regionService->getProjectUrl() . 'skyforgenews');
 
         $this->exportCookie();
 

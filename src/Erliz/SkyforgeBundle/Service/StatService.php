@@ -78,7 +78,7 @@ class StatService extends ApplicationAwareService
      */
     public function makeProfileUrlByPlayerId($playerId)
     {
-        return sprintf('%s/user/avatar/%s', $this->regionService->getProjectUrl(), $playerId);
+        return sprintf('%suser/avatar/%s', $this->regionService->getProjectUrl(), $playerId);
     }
 
     /**

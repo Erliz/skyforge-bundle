@@ -142,7 +142,11 @@ EOF
             ->setDate($today)
 
             ->setSumPrestige($aggregator['sumPrestige'])
-            ->setAvgPrestige(round($aggregator['sumPrestige'] / count($community->getMembers())))
+            ->setAvgPrestige(
+                count($community->getMembers()) ? round(
+                    $aggregator['sumPrestige'] / count($community->getMembers())
+                ) : 0
+            )
             ->setMembersCount(count($community->getMembers()))
             ->setMaxPrestige($aggregator['maxPrestige'])
 

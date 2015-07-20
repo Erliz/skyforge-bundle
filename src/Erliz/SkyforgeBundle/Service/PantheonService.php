@@ -7,18 +7,23 @@
 namespace Erliz\SkyforgeBundle\Service;
 
 
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\Query;
+use Erliz\SilexCommonBundle\Service\ApplicationAwareService;
 use Erliz\SkyforgeBundle\Entity\PantheonCollection;
 use Erliz\SkyforgeBundle\Entity\Pantheon;
+use Silex\Application;
 
-class PantheonService
+class PantheonService extends ApplicationAwareService
 {
     /** @var EntityRepository */
     private $repository;
 
-    public function __construct(EntityRepository $repository)
+    public function __construct(Application $app)
     {
-        $this->repository = $repository;
+        parent::__construct($app);
+        $this->repository = $this->getEntityManager()->getRepository('Erliz\SkyforgeBundle\Entity\Pantheon');
     }
 
     /**
@@ -48,21 +53,19 @@ class PantheonService
     {
         $dql = '
             select
-                p,
-                pt,
                 pds,
-                max(pds.maxPrestige) maxPrestige
-            from Erliz\SkyforgeBundle\Entity\Player p
-                 join p.dateStat pds
-                 join p.pantheon pt
+                pt,
+                max(pds.date)
+            from Erliz\SkyforgeBundle\Entity\PantheonDateStat pds
+                join pds.pantheon pt
             where
-                 p.name is not null
-            group by pds.player
-            order by maxPrestige DESC
+                pds.sumPrestige > 0
+            group by pds.pantheon
+            order by pds.sumPrestige DESC
         ';
 
-        return new PlayerCollection(
-            $this->getEntityManager()->createQuery($dql)->setMaxResults(1000)->getResult(Query::HYDRATE_ARRAY)
+        return new ArrayCollection(
+            $this->getEntityManager()->createQuery($dql)->setMaxResults(100)->getResult()
         );
     }
 }

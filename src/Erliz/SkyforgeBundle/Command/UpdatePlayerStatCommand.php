@@ -119,7 +119,6 @@ EOF
     {
         $flushTimeStart = microtime(true);
         $this->em->flush();
-//        $this->em->clear('Erliz\SkyforgeBundle\Entity\Player');
         $this->logger->addInfo(sprintf('Flush db take %s sec to proceed', microtime(true) - $flushTimeStart ));
     }
 
