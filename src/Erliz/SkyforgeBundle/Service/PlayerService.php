@@ -10,11 +10,14 @@ namespace Erliz\SkyforgeBundle\Service;
 
 use Doctrine\ORM\Query;
 use Erliz\SilexCommonBundle\Service\ApplicationAwareService;
+use Erliz\SkyforgeBundle\Entity\Player;
 use Erliz\SkyforgeBundle\Entity\PlayerCollection;
+use Erliz\SkyforgeBundle\Entity\PlayerDateStat;
 use Silex\Application;
 
 class PlayerService extends ApplicationAwareService
 {
+    const SLACK_PRESTIGE_COUNT = 500;
 
     /**
      * @return PlayerCollection
@@ -39,5 +42,29 @@ class PlayerService extends ApplicationAwareService
         return new PlayerCollection(
             $this->getEntityManager()->createQuery($dql)->setMaxResults(1000)->getResult(Query::HYDRATE_ARRAY)
         );
+    }
+
+    /**
+     * @param array $players
+     *
+     * @return float|int
+     */
+    public function getSlackPlayersCount($players)
+    {
+        $count = 0;
+        /** @var Player $player */
+        foreach ($players as $player) {
+            /** @var PlayerDateStat $statWeek */
+            if ($statWeek = $player->getDateStat()->get(7)) {
+                /** @var PlayerDateStat $statLast */
+                if ($statLast = $player->getDateStat()->first()) {
+                    if (($statLast->getMaxPrestige() - $statWeek->getMaxPrestige()) <= $this::SLACK_PRESTIGE_COUNT) {
+                        $count++;
+                    }
+                }
+            }
+        }
+
+        return $count;
     }
 }

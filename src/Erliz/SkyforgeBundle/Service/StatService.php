@@ -122,7 +122,7 @@ class StatService extends ApplicationAwareService
         }
 
         $currentPantheon = null;
-        if ($avatarData && $avatarData['pantheon_id']) {
+        if ($avatarData['pantheon_id']) {
             $currentPantheon = $this->pantheonRepo->find($avatarData['pantheon_id']);
         }
         $currentRole = $this->roleRepo->findOneBy(array('name' => $avatarData['role_name']));
@@ -130,88 +130,93 @@ class StatService extends ApplicationAwareService
             $currentRole = $this->roleRepo->findOneBy(array('name' => 'Храмовник'));
         }
         $today = new \DateTime('-4 hour');
-        $shownDates = $statData->avatarStats->daysToShow;
-        $dailyStatsLoopTimeStart = microtime(true);
-        foreach ($statData->avatarStats->dailyStats as $key => $dayStat) {
-            // -4 hour server update on 4 hour at night
-            $date = new \DateTime(($key - $shownDates + 1) . ' day -4 hour');
 
-            $totalTime = null;
-            if ($key + 1 == $shownDates) {
-                $totalTime = $statData->avatarStats->secondsPlayed;
-            }
+        if (!empty($statData)) {
+            $shownDates = $statData->avatarStats->daysToShow;
+            $dailyStatsLoopTimeStart = microtime(true);
+            foreach ($statData->avatarStats->dailyStats as $key => $dayStat) {
+                // -4 hour server update on 4 hour at night
+                $date = new \DateTime(($key - $shownDates + 1) . ' day -4 hour');
 
-            if ($oldDateStat = $this->dateStatRepo->findOneBy(array('player' => $player->getId(), 'date' => $date))) {
-                if($today->format('Y-m-d') == $oldDateStat->getDate()->format('Y-m-d')) {
-                    $oldDateStat->setCurrentPrestige($avatarData['prestige']['current'])
-                                ->setMaxPrestige($avatarData['prestige']['max'])
-                                ->setRole($currentRole)
-                                ->setPantheon($currentPantheon)
-                                ->setTotalTime($totalTime);
+                $totalTime = null;
+                if ($key + 1 == $shownDates) {
+                    $totalTime = $statData->avatarStats->secondsPlayed;
                 }
-                $oldDateStat->setPveMobKills($dayStat->pveMobKills)
-                            ->setPveBossKills($dayStat->pveBossKills)
-                            ->setPveDeaths($dayStat->pveDeaths)
-                            ->setPvpKills($dayStat->pvpKills)
-                            ->setPvpDeaths($dayStat->pvpDeaths)
-                            ->setPvpAssists($dayStat->pvpAssists);
-                continue;
+
+                if ($oldDateStat = $this->dateStatRepo->findOneBy(array('player' => $player->getId(), 'date' => $date))) {
+                    if($today->format('Y-m-d') == $oldDateStat->getDate()->format('Y-m-d')) {
+                        $oldDateStat->setCurrentPrestige($avatarData['prestige']['current'])
+                                    ->setMaxPrestige($avatarData['prestige']['max'])
+                                    ->setRole($currentRole)
+                                    ->setPantheon($currentPantheon)
+                                    ->setTotalTime($totalTime);
+                    }
+                    $oldDateStat->setPveMobKills($dayStat->pveMobKills)
+                                ->setPveBossKills($dayStat->pveBossKills)
+                                ->setPveDeaths($dayStat->pveDeaths)
+                                ->setPvpKills($dayStat->pvpKills)
+                                ->setPvpDeaths($dayStat->pvpDeaths)
+                                ->setPvpAssists($dayStat->pvpAssists);
+                    continue;
+                }
+
+                $player->setName($avatarData['name'])
+                       ->setNick($avatarData['nick'])
+                       ->setImg($avatarData['img'])
+                       ->setCurrentRole($currentRole);
+
+                $dateStat = new PlayerDateStat();
+                $dateStat->setPlayer($player)
+                         ->setDate($date)
+                         ->setRole($currentRole)
+                         ->setPantheon($currentPantheon)
+                         ->setTotalTime($totalTime)
+    //                     ->setSoloTime($this->getTimeSpentByAdventureType($statData->adventureStats->byAdventureStats, $this::SOLO_TYPE))
+                         ->setCurrentPrestige($avatarData['prestige']['current'])
+                         ->setMaxPrestige($avatarData['prestige']['max'])
+                         ->setPveMobKills($dayStat->pveMobKills)
+                         ->setPveBossKills($dayStat->pveBossKills)
+                         ->setPveDeaths($dayStat->pveDeaths)
+                         ->setPvpKills($dayStat->pvpKills)
+                         ->setPvpDeaths($dayStat->pvpDeaths)
+                         ->setPvpAssists($dayStat->pvpAssists);
+
+                if (isset($statData->adventureStats) && isset($statData->adventureStats->byAdventureStats)) {
+                    $dateStat->setPvpTime($this->getTimeSpentByAdventureType($statData->adventureStats->byAdventureStats, $this::PVP_TYPE));
+                }
+
+                $em->persist($dateStat);
             }
+            $this->logger->addInfo(sprintf('Daily stat take %s sec to proceed', microtime(true) - $dailyStatsLoopTimeStart));
 
-            $player->setName($avatarData['name'])
-                   ->setNick($avatarData['nick'])
-                   ->setImg($avatarData['img'])
-                   ->setCurrentRole($currentRole);
-
-            $dateStat = new PlayerDateStat();
-            $dateStat->setPlayer($player)
-                     ->setDate($date)
-                     ->setRole($currentRole)
-                     ->setPantheon($currentPantheon)
-                     ->setTotalTime($totalTime)
-//                     ->setSoloTime($this->getTimeSpentByAdventureType($statData->adventureStats->byAdventureStats, $this::SOLO_TYPE))
-                     ->setCurrentPrestige($avatarData['prestige']['current'])
-                     ->setMaxPrestige($avatarData['prestige']['max'])
-                     ->setPveMobKills($dayStat->pveMobKills)
-                     ->setPveBossKills($dayStat->pveBossKills)
-                     ->setPveDeaths($dayStat->pveDeaths)
-                     ->setPvpKills($dayStat->pvpKills)
-                     ->setPvpDeaths($dayStat->pvpDeaths)
-                     ->setPvpAssists($dayStat->pvpAssists);
-
-            if (isset($statData->adventureStats) && isset($statData->adventureStats->byAdventureStats)) {
-                $dateStat->setPvpTime($this->getTimeSpentByAdventureType($statData->adventureStats->byAdventureStats, $this::PVP_TYPE));
+            $classStatsLoopTimeStart = microtime(true);
+            foreach ($statData->avatarStats->classStats as $roleData) {
+                $role = $this->roleRepo->findOneBy(array('resourceId' => $roleData->characterClass->resourceId));
+                if (!$role) {
+                    throw new RuntimeException('New role detected ' . json_encode($roleData->characterClass));
+                }
+                $roleStat = $this->roleStatRepo->findOneBy(array('player' => $player->getId(), 'role' => $role->getId()));
+                if (!$roleStat) {
+                    $roleStat = new PlayerRoleStat();
+                    $roleStat->setPlayer($player)
+                             ->setRole($role);
+                    $em->persist($roleStat);
+                }
+                $roleDataStat = $roleData->stats;
+                $roleStat
+                    ->setSecondsActivePlayed($roleData->secondsActivePlayed)
+                    ->setSecondsPlayed($roleData->secondsPlayed)
+                    ->setPveMobKills($roleDataStat->pveMobKills)
+                    ->setPveBossKills($roleDataStat->pveBossKills)
+                    ->setPveDeaths($roleDataStat->pveDeaths)
+                    ->setPvpKills($roleDataStat->pvpKills)
+                    ->setPvpDeaths($roleDataStat->pvpDeaths)
+                    ->setPvpAssists($roleDataStat->pvpAssists);
             }
-
-            $em->persist($dateStat);
+            $this->logger->addInfo(sprintf('Class stat take %s sec to proceed', microtime(true) - $classStatsLoopTimeStart));
+        } else {
+            $this->logger->addWarning(sprintf('Empty statData object for player with id ', $playerId));
         }
-        $this->logger->addInfo(sprintf('Daily stat take %s sec to proceed', microtime(true) - $dailyStatsLoopTimeStart));
-
-        $classStatsLoopTimeStart = microtime(true);
-        foreach ($statData->avatarStats->classStats as $roleData) {
-            $role = $this->roleRepo->findOneBy(array('resourceId' => $roleData->characterClass->resourceId));
-            if (!$role) {
-                throw new RuntimeException('New role detected ' . json_encode($roleData->characterClass));
-            }
-            $roleStat = $this->roleStatRepo->findOneBy(array('player' => $player->getId(), 'role' => $role->getId()));
-            if (!$roleStat) {
-                $roleStat = new PlayerRoleStat();
-                $roleStat->setPlayer($player)
-                         ->setRole($role);
-                $em->persist($roleStat);
-            }
-            $roleDataStat = $roleData->stats;
-            $roleStat
-                ->setSecondsActivePlayed($roleData->secondsActivePlayed)
-                ->setSecondsPlayed($roleData->secondsPlayed)
-                ->setPveMobKills($roleDataStat->pveMobKills)
-                ->setPveBossKills($roleDataStat->pveBossKills)
-                ->setPveDeaths($roleDataStat->pveDeaths)
-                ->setPvpKills($roleDataStat->pvpKills)
-                ->setPvpDeaths($roleDataStat->pvpDeaths)
-                ->setPvpAssists($roleDataStat->pvpAssists);
-        }
-        $this->logger->addInfo(sprintf('Class stat take %s sec to proceed', microtime(true) - $classStatsLoopTimeStart));
 
         if ($withFlush) {
             $flushTimeStart = microtime(true);
