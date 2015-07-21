@@ -85,22 +85,20 @@ EOF
                 $this->updateCommunityMembers($community, $output);
             }
         }
-        $lastId = $input->getOption('lastId');
-        if ($input->getOption('pantheons')) {
-            /** @var Pantheon $community */
-            foreach ($pantheonRepository->findAll() as $community) {
-                if ($community->getId() == $lastId){
-                    $lastId = false;
-                }
-                if ($lastId) {
-                    continue;
-                }
-                $this->updateCommunityMembers($community, $output);
-                $this->flush();
+
+        if ($input->getOption('pantheons') || $input->getOption('communities')) {
+            $lastId = $input->getOption('lastId');
+            $currentIteration = 1;
+
+            if ($input->getOption('pantheons')) {
+                $communities = $pantheonRepository->findAll();
+            } else {
+                $communities = $communityRepository->findAll();
             }
-        } else if ($input->getOption('communities')) {
-            /** @var Community $community */
-            foreach ($communityRepository->findAll() as $community) {
+            $communitiesCount = count($communities);
+
+            /** @var CommunityInterface $community */
+            foreach ($communities as $community) {
                 if ($community->getId() == $lastId){
                     $lastId = false;
                 }
@@ -108,7 +106,9 @@ EOF
                     continue;
                 }
                 $this->updateCommunityMembers($community, $output);
+                $this->logger->addInfo(sprintf('Processed %s / %s', $currentIteration, $communitiesCount));
                 $this->flush();
+                $currentIteration++;
             }
         }
 
