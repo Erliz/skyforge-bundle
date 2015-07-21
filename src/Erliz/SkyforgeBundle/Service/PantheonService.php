@@ -54,13 +54,11 @@ class PantheonService extends ApplicationAwareService
         $dql = '
             select
                 pds,
-                pt,
-                max(pds.date)
-            from Erliz\SkyforgeBundle\Entity\PantheonDateStat pds
-                join pds.pantheon pt
+                pt
+            from Erliz\SkyforgeBundle\Entity\Pantheon pt
+                join pt.dateStat pds
             where
                 pds.sumPrestige > 0
-            group by pds.pantheon
             order by pds.sumPrestige DESC
         ';
 
