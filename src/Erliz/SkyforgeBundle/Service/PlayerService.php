@@ -32,7 +32,7 @@ class PlayerService extends ApplicationAwareService
                 max(pds.maxPrestige) maxPrestige
             from Erliz\SkyforgeBundle\Entity\Player p
                  join p.dateStat pds
-                 join p.pantheon pt
+                 left join p.pantheon pt
             where
                  p.name is not null
             group by pds.player
