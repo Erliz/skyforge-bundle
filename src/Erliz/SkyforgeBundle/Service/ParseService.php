@@ -630,7 +630,7 @@ class ParseService
 
         $titleText = $titleDom->item(0)->textContent;
 
-        return $titleText == 'Skyforge - обновление';
+        return in_array($titleText, array('Skyforge - обновление', 'Skyforge - update'));
     }
 
     /**
