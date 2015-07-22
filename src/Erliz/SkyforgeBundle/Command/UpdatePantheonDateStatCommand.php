@@ -66,7 +66,6 @@ EOF
         if ($input->getOption('id')) {
             $this->updateCommunityDateStat($this->pantheonRepository->find($input->getOption('id')), $output);
         } else {
-
             /** @var Pantheon $community */
             foreach ($this->pantheonRepository->findAll() as $community) {
                 $this->updateCommunityDateStat($community, $output);

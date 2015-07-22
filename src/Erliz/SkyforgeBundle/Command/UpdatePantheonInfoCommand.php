@@ -98,33 +98,55 @@ EOF
                 $this->updateCommunityMembers($community, $output, $type);
             }
         }
-        $lastId = $input->getOption('lastId');
-        if ($input->getOption('pantheons')) {
-            /** @var Pantheon $community */
-            foreach ($this->pantheonRepository->findAll() as $community) {
-                if ($community->getId() == $lastId){
-                    $lastId = false;
-                }
-                if ($lastId) {
-                    continue;
-                }
-                $this->updateCommunityMembers($community, $output, $this::TYPE_PANTHEON);
+        if ($input->getOption('pantheons') || $input->getOption('communities')) {
+            $lastId = $input->getOption('lastId');
+
+            if ($input->getOption('pantheons')) {
+                $sqlResponse = $this->em->createQuery("
+                    SELECT pt.id, count(pl.id) cnt
+                    FROM Erliz\SkyforgeBundle\Entity\Pantheon pt
+                    JOIN pt.members pl
+                    group by pt.id
+                    order by cnt DESC")->getScalarResult();
+                $type = $this::TYPE_PANTHEON;
+                $repo = $this->pantheonRepository;
+            } else {
+                $sqlResponse = $this->em->createQuery("
+                    SELECT pt.id, count(pl.id) cnt
+                    FROM Erliz\SkyforgeBundle\Entity\Community pt
+                    JOIN pt.members pl
+                    group by pt.id
+                    order by cnt DESC")->getScalarResult();
+                $type = $this::TYPE_COMMUNITY;
+                $repo = $this->communityRepository;
             }
-        }
-        if ($input->getOption('communities')) {
-            /** @var Community $community */
-            foreach ($this->communityRepository->findAll() as $community) {
-                if ($community->getId() == $lastId){
+
+            $communityIds = array_map('current', $sqlResponse);
+            $communitiesCount = count($communityIds);
+
+            /** @var CommunityInterface $community */
+            foreach ($communityIds as $index => $communityId) {
+                if ($communityId == $lastId){
                     $lastId = false;
                 }
                 if ($lastId) {
                     continue;
                 }
-                $this->updateCommunityMembers($community, $output, $this::TYPE_COMMUNITY);
+                $this->updateCommunityMembers($repo->find($communityId), $output, $type);
+                $this->logger->addInfo(sprintf('Processed %s / %s', $index + 1, $communitiesCount));
+                $this->flush();
             }
         }
 
         unlink($lockFilePath);
+    }
+
+    private function flush()
+    {
+        $flushTimeStart = microtime(true);
+        $this->em->flush();
+        $this->em->clear();
+        $this->logger->addInfo(sprintf('Flush db take %s sec to proceed', microtime(true) - $flushTimeStart ));
     }
 
     private function makeCommunityMembersUrl($id)
@@ -202,8 +224,6 @@ EOF
             }
         }
 
-//        $this->em->flush();
-
         foreach ($members as $parsedMember) {
             $player = $this->playerRepository->find($parsedMember->id);
             if (!$player) {
@@ -231,8 +251,6 @@ EOF
         }
 
         $community->setUpdatedAt(new DateTime());
-        $this->em->flush();
-
         usleep(rand(500, 1500) * 1000);
     }
 

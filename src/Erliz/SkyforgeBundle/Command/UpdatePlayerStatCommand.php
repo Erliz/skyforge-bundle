@@ -81,12 +81,12 @@ EOF
                 $this->logger->addInfo(sprintf('Community with id %s not found in db', $communityId));
             } else {
                 $this->updateCommunityMembers($community, $output);
+                $this->flush();
             }
         }
 
         if ($input->getOption('pantheons') || $input->getOption('communities')) {
             $lastId = $input->getOption('lastId');
-            $currentIteration = 1;
 
             if ($input->getOption('pantheons')) {
                 $sqlResponse = $this->em->createQuery("
@@ -110,7 +110,7 @@ EOF
             $communitiesCount = count($communityIds);
 
             /** @var CommunityInterface $community */
-            foreach ($communityIds as $communityId) {
+            foreach ($communityIds as $index => $communityId) {
                 if ($communityId == $lastId){
                     $lastId = false;
                 }
@@ -118,9 +118,8 @@ EOF
                     continue;
                 }
                 $this->updateCommunityMembers($repo->find($communityId), $output);
-                $this->logger->addInfo(sprintf('Processed %s / %s', $currentIteration, $communitiesCount));
+                $this->logger->addInfo(sprintf('Processed %s / %s', $index + 1, $communitiesCount));
                 $this->flush();
-                $currentIteration++;
             }
         }
 
