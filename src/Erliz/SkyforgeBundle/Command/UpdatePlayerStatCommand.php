@@ -10,9 +10,7 @@ namespace Erliz\SkyforgeBundle\Command;
 
 use Doctrine\ORM\EntityManager;
 use Erliz\SilexCommonBundle\Command\ApplicationAwareCommand;
-use Erliz\SkyforgeBundle\Entity\Community;
 use Erliz\SkyforgeBundle\Entity\CommunityInterface;
-use Erliz\SkyforgeBundle\Entity\Pantheon;
 use Erliz\SkyforgeBundle\Service\RegionService;
 use Erliz\SkyforgeBundle\Service\StatService;
 use Monolog\Logger;
@@ -91,21 +89,35 @@ EOF
             $currentIteration = 1;
 
             if ($input->getOption('pantheons')) {
-                $communities = $pantheonRepository->findAll();
+                $sqlResponse = $this->em->createQuery("
+                    SELECT pt.id, count(pl.id) cnt
+                    FROM Erliz\SkyforgeBundle\Entity\Pantheon pt
+                    JOIN pt.members pl
+                    group by pt.id
+                    order by cnt DESC")->getScalarResult();
+                $repo = $pantheonRepository;
             } else {
-                $communities = $communityRepository->findAll();
+                $sqlResponse = $this->em->createQuery("
+                    SELECT pt.id, count(pl.id) cnt
+                    FROM Erliz\SkyforgeBundle\Entity\Community pt
+                    JOIN pt.members pl
+                    group by pt.id
+                    order by cnt DESC")->getScalarResult();
+                $repo = $communityRepository;
             }
-            $communitiesCount = count($communities);
+
+            $communityIds = array_map('current', $sqlResponse);
+            $communitiesCount = count($communityIds);
 
             /** @var CommunityInterface $community */
-            foreach ($communities as $community) {
-                if ($community->getId() == $lastId){
+            foreach ($communityIds as $communityId) {
+                if ($communityId == $lastId){
                     $lastId = false;
                 }
                 if ($lastId) {
                     continue;
                 }
-                $this->updateCommunityMembers($community, $output);
+                $this->updateCommunityMembers($repo->find($communityId), $output);
                 $this->logger->addInfo(sprintf('Processed %s / %s', $currentIteration, $communitiesCount));
                 $this->flush();
                 $currentIteration++;
@@ -119,6 +131,7 @@ EOF
     {
         $flushTimeStart = microtime(true);
         $this->em->flush();
+        $this->em->clear();
         $this->logger->addInfo(sprintf('Flush db take %s sec to proceed', microtime(true) - $flushTimeStart ));
     }
 
@@ -159,7 +172,7 @@ EOF
                     if ($failsCount >= 10) {
                         throw $e;
                     }
-                    $this->logger->addInfo(sprintf('Fail to update player "%s" with id %s', $player->getNick(), $player->getId()));
+                    $this->logger->addWarning(sprintf('Fail to update player "%s" with id %s', $player->getNick(), $player->getId()));
                 } else {
                     throw $e;
                 }
