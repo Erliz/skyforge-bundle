@@ -77,13 +77,13 @@ EOF
         $this->pantheonRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Pantheon');
         $this->communityRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Community');
 
-        $lockFilePath = $app['config']['app']['path'].'/cache/curl/parse.lock';
+//        $lockFilePath = $app['config']['app']['path'].'/cache/curl/parse.lock';
 
-        if (is_file($lockFilePath)) {
-            throw new \RuntimeException('Another parse in progress');
-        } else {
-            file_put_contents($lockFilePath, getmypid());
-        }
+//        if (is_file($lockFilePath)) {
+//            throw new \RuntimeException('Another parse in progress');
+//        } else {
+//            file_put_contents($lockFilePath, getmypid());
+//        }
 
         if ($communityId = $input->getOption('id')) {
             $community = $this->communityRepository->find($communityId);
@@ -96,6 +96,7 @@ EOF
                 $this->logger->addInfo(sprintf('Community with id %s not found in db', $communityId));
             } else {
                 $this->updateCommunityMembers($community, $output, $type);
+                $this->flush();
             }
         }
         if ($input->getOption('pantheons') || $input->getOption('communities')) {
@@ -105,7 +106,7 @@ EOF
                 $sqlResponse = $this->em->createQuery("
                     SELECT pt.id, count(pl.id) cnt
                     FROM Erliz\SkyforgeBundle\Entity\Pantheon pt
-                    JOIN pt.members pl
+                    LEFT JOIN pt.members pl
                     group by pt.id
                     order by cnt DESC")->getScalarResult();
                 $type = $this::TYPE_PANTHEON;
@@ -138,7 +139,7 @@ EOF
             }
         }
 
-        unlink($lockFilePath);
+//        unlink($lockFilePath);
     }
 
     private function flush()

@@ -62,13 +62,13 @@ EOF
         $pantheonRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Pantheon');
         $communityRepository = $this->em->getRepository('Erliz\SkyforgeBundle\Entity\Community');
 
-        $lockFilePath = $app['config']['app']['path'].'/cache/curl/parse.lock';
+//        $lockFilePath = $app['config']['app']['path'].'/cache/curl/parse.lock';
 
-        if (is_file($lockFilePath)) {
-            throw new RuntimeException('Another parse in progress');
-        } else {
-            file_put_contents($lockFilePath, getmypid());
-        }
+//        if (is_file($lockFilePath)) {
+//            throw new RuntimeException('Another parse in progress');
+//        } else {
+//            file_put_contents($lockFilePath, getmypid());
+//        }
         if ($playerId = $input->getOption('avatar')) {
             $this->statService->updatePlayer($playerId, true);
         }
@@ -123,7 +123,7 @@ EOF
             }
         }
 
-        unlink($lockFilePath);
+//        unlink($lockFilePath);
     }
 
     private function flush()
@@ -145,10 +145,11 @@ EOF
         $today = new \DateTime('-4 hour');
         $loopTimeStart = microtime(true);
         $failsCount = 0 ;
+        $members = $community->getMembers();
         if ($output->isVerbose()) {
-            $this->logger->addInfo(sprintf('Found %s members', count($community->getMembers())));
+            $this->logger->addInfo(sprintf('Found %s members', count($members)));
         }
-        foreach ($community->getMembers() as $player) {
+        foreach ($members as $player) {
             $memberTimeStart = microtime(true);
             $this->logger->addInfo(sprintf('Checking user "%s" with id "%s"', $player->getNick(), $player->getId()));
             $alreadyParseCheckTime = microtime(true);
