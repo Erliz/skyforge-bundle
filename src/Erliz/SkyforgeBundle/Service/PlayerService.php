@@ -40,7 +40,12 @@ class PlayerService extends ApplicationAwareService
         ';
 
         return new PlayerCollection(
-            $this->getEntityManager()->createQuery($dql)->setMaxResults(1000)->getResult(Query::HYDRATE_ARRAY)
+            $this->getEntityManager()
+                ->createQuery($dql)
+                ->useResultCache(true)
+                ->setResultCacheLifetime(300)
+                ->setMaxResults(1000)
+                ->getResult(Query::HYDRATE_ARRAY)
         );
     }
 

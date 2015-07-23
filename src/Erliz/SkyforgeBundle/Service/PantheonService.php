@@ -62,7 +62,11 @@ class PantheonService extends ApplicationAwareService
             order by pds.sumPrestige DESC
         ';
 
-        $result = $this->getEntityManager()->createQuery($dql)->getResult();
+        $result = $this->getEntityManager()
+            ->createQuery($dql)
+            ->useResultCache(true)
+            ->setResultCacheLifetime(300)
+            ->getResult();
         return new ArrayCollection(array_slice($result, 0, 100));
     }
 }
