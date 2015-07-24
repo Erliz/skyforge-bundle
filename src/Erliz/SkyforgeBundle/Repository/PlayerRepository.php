@@ -7,6 +7,8 @@
 namespace Erliz\SkyforgeBundle\Repository;
 
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Criteria;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query;
 use Erliz\SkyforgeBundle\Entity\CommunityInterface;
@@ -34,18 +36,68 @@ class PlayerRepository extends EntityRepository
         return $qb->getQuery()->getResult();
     }
 
+    /**
+     * @param Pantheon $pantheon
+     *
+     * @return ArrayCollection
+     */
+    public function getDateStatByPantheon($pantheon)
+    {
+        $params = array(':pantheonId' => $pantheon->getId());
+        $qb = $this->getEntityManager()->createQueryBuilder();
+
+        return new ArrayCollection(
+            $qb->select('pds')
+                ->from('Erliz\SkyforgeBundle\Entity\PlayerDateStat', 'pds')
+                ->leftJoin('pds.player', 'p')
+                ->where($qb->expr()->eq('p.pantheon', ':pantheonId'))
+                ->orderBy('pds.date', Criteria::DESC)
+            ->getQuery()
+            ->setParameters($params)
+            ->useResultCache(true)
+            ->setResultCacheLifetime(300)
+            ->getResult()
+        );
+    }
+
+    /**
+     * @param Pantheon $pantheon
+     *
+     * @return ArrayCollection
+     */
+    public function getRoleStatByPantheon($pantheon)
+    {
+        $params = array(':pantheonId' => $pantheon->getId());
+        $qb = $this->getEntityManager()->createQueryBuilder();
+
+        return new ArrayCollection(
+            $qb->select('prs')
+                ->from('Erliz\SkyforgeBundle\Entity\PlayerRoleStat', 'prs')
+                ->leftJoin('prs.player', 'p')
+                ->where($qb->expr()->eq('p.pantheon', ':pantheonId'))
+                ->orderBy('prs.secondsActivePlayed', Criteria::DESC)
+            ->getQuery()
+            ->setParameters($params)
+            ->useResultCache(true)
+            ->setResultCacheLifetime(300)
+            ->getResult()
+        );
+    }
+
     public function findWithDateStatByPantheon(Pantheon $pantheon)
     {
         $dql = '
             select
-                p,
-                pds
+                p.*,
+                pds.*
             from Erliz\SkyforgeBundle\Entity\Player p
-                 join p.dateStat pds
-            where
-                p.pantheon = :pantheonId
-            order by pds.maxPrestige DESC, pds.date DESC
+                left join (select player, MAX(max_prestige) max_prestige from Erliz\SkyforgeBundle\Entity\PlayerDateStat group by player) m_pds
+                left join Erliz\SkyforgeBundle\Entity\PlayerDateStat pds on pds.max_prestige = m_pds.max_prestige and pds.player = p.id
+            where p.pantheon = :pantheonId
+            group by p.id
+            order by pds.max_prestige DESC
         ';
+
         $params = array(':pantheonId' => $pantheon->getId());
 
         return new PlayerCollection(
@@ -54,7 +106,7 @@ class PlayerRepository extends EntityRepository
                 ->setParameters($params)
                 ->useResultCache(true)
                 ->setResultCacheLifetime(300)
-                ->getResult()
+                ->getResult(Query::HYDRATE_ARRAY)
         );
     }
 }
