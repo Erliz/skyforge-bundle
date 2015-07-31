@@ -82,7 +82,7 @@ EOF
      */
     private function updateCommunityDateStat(Pantheon $community, OutputInterface $output)
     {
-        $this->logger->addInfo(sprintf('Update community "%s" with id %s', $community->getId(), $community->getName()));
+        $this->logger->addInfo(sprintf('Update community "%s" with id %s', $community->getName(), $community->getId()));
 
         $today = new \DateTime('-4 hour');
         /** @var PantheonDateStat[] $communityDateStat */

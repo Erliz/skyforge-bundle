@@ -9,6 +9,9 @@ namespace Erliz\SkyforgeBundle\Extension\Twig;
 
 use Erliz\SilexCommonBundle\Extension\Twig\ApplicationAwareExtension;
 use Erliz\SkyforgeBundle\Entity\Item\ItemRawData;
+use Erliz\SkyforgeBundle\Entity\Player;
+use Erliz\SkyforgeBundle\Entity\PlayerRoleStat;
+use Twig_SimpleFilter;
 use Twig_SimpleFunction;
 
 class ContentExtension extends ApplicationAwareExtension
@@ -24,7 +27,16 @@ class ContentExtension extends ApplicationAwareExtension
     public function getFunctions()
     {
         return array(
-            new Twig_SimpleFunction('proficiency', array($this, 'proficiency'))
+            new Twig_SimpleFunction('proficiency', array($this, 'proficiency')),
+            new Twig_SimpleFunction('pveKdr', array($this, 'pveKdr')),
+            new Twig_SimpleFunction('pvpKdr', array($this, 'pvpKdr'))
+        );
+    }
+
+    public function getFilters()
+    {
+        return array(
+            new Twig_SimpleFilter('longestRole', array($this, 'longestActiveRoleStat'))
         );
     }
 
@@ -43,5 +55,38 @@ class ContentExtension extends ApplicationAwareExtension
         }
 
         return $proficiency;
+    }
+
+    /**
+     * @param Player $player
+     *
+     * @return PlayerRoleStat
+     */
+    public function longestActiveRoleStat(Player $player)
+    {
+        return $this->getApp()['player.skyforge.service']->getLongestActiveRoleStat($player);
+    }
+
+    /**
+     * @param int $kills
+     * @param int $deaths
+     *
+     * @return float
+     */
+    public function pveKdr($kills, $deaths)
+    {
+        return $this->getApp()['player.skyforge.service']->calcPveKdr($kills, $deaths);
+    }
+
+    /**
+     * @param int $kills
+     * @param int $deaths
+     * @param int $assists
+     *
+     * @return float
+     */
+    public function pvpKdr($kills, $deaths, $assists)
+    {
+        return $this->getApp()['player.skyforge.service']->calcPvpKdr($kills, $deaths, $assists);
     }
 }

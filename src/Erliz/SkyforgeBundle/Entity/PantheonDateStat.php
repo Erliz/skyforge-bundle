@@ -126,24 +126,6 @@ class PantheonDateStat
      */
     private $pvpSumAssists;
 
-    public function getPveKdr()
-    {
-        if (!$this->pveSumDeaths) {
-            return 0;
-        }
-
-        return round($this->pveSumBossKills / $this->pveSumDeaths, 2);
-    }
-
-    public function getPvpKdr()
-    {
-        if (!$this->pvpSumDeaths) {
-            return 0;
-        }
-
-        return round(($this->pvpSumKills + $this->pvpSumAssists * 0.25) / $this->pvpSumDeaths, 2);
-    }
-
     /**
      * @return DateTime
      */

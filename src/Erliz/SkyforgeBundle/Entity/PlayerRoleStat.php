@@ -108,24 +108,6 @@ class PlayerRoleStat
      */
     private $modifiedAt;
 
-    public function getPveKdr()
-    {
-        if (!$this->pveDeaths) {
-            return 0;
-        }
-
-        return round($this->pveBossKills / $this->pveDeaths, 2);
-    }
-
-    public function getPvpKdr()
-    {
-        if (!$this->pvpDeaths) {
-            return 0;
-        }
-
-        return round(($this->pvpKills + $this->pvpAssists * 0.25) / $this->pvpDeaths, 2);
-    }
-
     /**
      * @return Player
      */

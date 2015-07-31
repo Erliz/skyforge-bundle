@@ -322,24 +322,6 @@ class Player implements JsonSerializable
     }
 
     /**
-     * @return PlayerRoleStat
-     */
-    public function getLongestActiveRoleStat()
-    {
-        $roleStats = $this->getRoleStat();
-
-        /** @var PlayerRoleStat $roleStat */
-        $roleStat = null;
-        foreach ($roleStats as $stat) {
-            if (is_null($roleStat) || $roleStat->getSecondsActivePlayed() < $stat->getSecondsActivePlayed()) {
-                $roleStat = $stat;
-            }
-        }
-
-        return $roleStat;
-    }
-
-    /**
      * @return PlayerRoleStat[]
      */
     public function getRoleStat()

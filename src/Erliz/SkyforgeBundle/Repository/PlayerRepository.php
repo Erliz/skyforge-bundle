@@ -17,6 +17,23 @@ use Erliz\SkyforgeBundle\Entity\PlayerCollection;
 
 class PlayerRepository extends EntityRepository
 {
+
+    public function getDateStat()
+    {
+        $qb = $this->getEntityManager()->createQueryBuilder();
+
+        $qb->select('pds')
+            ->from('Erliz\SkyforgeBundle\Entity\PlayerDateStat', 'pds')
+            ->where($qb->expr()->eq('pds.player', ':player_id'))
+            ->orderBy('pds.date', Criteria::DESC)
+            ->setParameter('player_id', $this->getId());
+
+        return $qb->getQuery()
+            ->useResultCache(true)
+            ->setResultCacheLifetime(300)
+            ->getResult();
+    }
+
     /**
      * @param CommunityInterface $community
      *

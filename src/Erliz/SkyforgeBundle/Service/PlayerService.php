@@ -13,6 +13,7 @@ use Erliz\SilexCommonBundle\Service\ApplicationAwareService;
 use Erliz\SkyforgeBundle\Entity\Player;
 use Erliz\SkyforgeBundle\Entity\PlayerCollection;
 use Erliz\SkyforgeBundle\Entity\PlayerDateStat;
+use Erliz\SkyforgeBundle\Entity\PlayerRoleStat;
 use Silex\Application;
 
 class PlayerService extends ApplicationAwareService
@@ -47,6 +48,49 @@ class PlayerService extends ApplicationAwareService
                 ->setMaxResults(1000)
                 ->getResult(Query::HYDRATE_ARRAY)
         );
+    }
+
+    /**
+     * @param Player $player
+     *
+     * @return PlayerRoleStat
+     */
+    public function getLongestActiveRoleStat(Player $player)
+    {
+        $roleStats = $player->getRoleStat();
+
+        /** @var PlayerRoleStat $roleStat */
+        $roleStat = null;
+        foreach ($roleStats as $stat) {
+            if (is_null($roleStat) || $roleStat->getSecondsActivePlayed() < $stat->getSecondsActivePlayed()) {
+                $roleStat = $stat;
+            }
+        }
+
+        return $roleStat;
+    }
+
+    /**
+     * @param int $kills
+     * @param int $deaths
+     *
+     * @return float
+     */
+    public function calcPveKdr($kills, $deaths)
+    {
+        return $deaths ? round($kills / $deaths, 2) : 0;
+    }
+
+    /**
+     * @param int $kills
+     * @param int $deaths
+     * @param int $assists
+     *
+     * @return float
+     */
+    public function calcPvpKdr($kills, $deaths, $assists)
+    {
+        return $deaths ? round(($kills + $assists * 0.25) / $deaths, 2) : 0;
     }
 
     /**
