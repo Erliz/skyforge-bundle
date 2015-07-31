@@ -10,6 +10,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Erliz\SkyforgeBundle\Entity\Player;
 use Erliz\SkyforgeBundle\Entity\PlayerDateStat;
+use InvalidArgumentException;
 
 class MembersService
 {
@@ -129,30 +130,52 @@ class MembersService
      *
      * @return ArrayCollection
      */
-    public function sortMembersByPrestige(Collection $players)
+    public function sortMembersByPrestige($players)
     {
-        $iterator = $players->getIterator();
-        $iterator->uasort(function ($a, $b){
-            /** @var Player $a */
-            /** @var PlayerDateStat $lastDateStatFromA */
-            $lastDateStatFromA = $a->getDateStat()->first();
-            /** @var Player $b */
-            /** @var PlayerDateStat $lastDateStatFromB */
-            $lastDateStatFromB = $b->getDateStat()->first();
-            if ($lastDateStatFromA && !$lastDateStatFromB) {
-                return -1;
-            } elseif (!$lastDateStatFromA && $lastDateStatFromB) {
-                return 1;
-            } elseif (!$lastDateStatFromA && !$lastDateStatFromB) {
-                return 0;
-            } elseif ($lastDateStatFromA->getMaxPrestige() == $lastDateStatFromB->getMaxPrestige()) {
-                return 0;
-            } else {
-                return ($lastDateStatFromA->getMaxPrestige() < $lastDateStatFromB->getMaxPrestige()) ? 1 : -1;
-            }
-        });
+        if ($players instanceof Collection){
+            $iterator = $players->getIterator();
+            $iterator->uasort(function ($a, $b){
+                /** @var Player $a */
+                /** @var PlayerDateStat $lastDateStatFromA */
+                $lastDateStatFromA = $a->getDateStat()->first();
+                /** @var Player $b */
+                /** @var PlayerDateStat $lastDateStatFromB */
+                $lastDateStatFromB = $b->getDateStat()->first();
+                if ($lastDateStatFromA && !$lastDateStatFromB) {
+                    return -1;
+                } elseif (!$lastDateStatFromA && $lastDateStatFromB) {
+                    return 1;
+                } elseif (!$lastDateStatFromA && !$lastDateStatFromB) {
+                    return 0;
+                } elseif ($lastDateStatFromA->getMaxPrestige() == $lastDateStatFromB->getMaxPrestige()) {
+                    return 0;
+                } else {
+                    return ($lastDateStatFromA->getMaxPrestige() < $lastDateStatFromB->getMaxPrestige()) ? 1 : -1;
+                }
+            });
+            $result = new ArrayCollection(iterator_to_array($iterator));
+        } elseif (is_array($players)) {
+            $result = $players;
+            uasort($result, function($a, $b){
+                $lastDateStatFromA = isset($a['dateStat']) ? $a['dateStat'][0] : null;
+                $lastDateStatFromB = isset($b['dateStat']) ? $b['dateStat'][0] : null;
+                if ($lastDateStatFromA && !$lastDateStatFromB) {
+                    return -1;
+                } elseif (!$lastDateStatFromA && $lastDateStatFromB) {
+                    return 1;
+                } elseif (!$lastDateStatFromA && !$lastDateStatFromB) {
+                    return 0;
+                }  elseif ($lastDateStatFromA['maxPrestige'] == $lastDateStatFromB['maxPrestige']) {
+                    return 0;
+                } else {
+                    return ($lastDateStatFromA['maxPrestige'] < $lastDateStatFromB['maxPrestige']) ? 1 : -1;
+                }
+            });
+        } else {
+            throw new InvalidArgumentException('Argument not instance of Collection nor array');
+        }
 
-        return new ArrayCollection(iterator_to_array($iterator));
+        return $result;
     }
 
     /**

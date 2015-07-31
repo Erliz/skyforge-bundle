@@ -51,18 +51,21 @@ class PlayerService extends ApplicationAwareService
     }
 
     /**
-     * @param Player $player
+     * @param array $player
      *
      * @return PlayerRoleStat
      */
-    public function getLongestActiveRoleStat(Player $player)
+    public function getLongestActiveRoleStat(array $player)
     {
-        $roleStats = $player->getRoleStat();
+        if (!isset($player['roleStat'])) {
+            return false;
+        }
+        $roleStats = $player['roleStat'];
 
         /** @var PlayerRoleStat $roleStat */
         $roleStat = null;
         foreach ($roleStats as $stat) {
-            if (is_null($roleStat) || $roleStat->getSecondsActivePlayed() < $stat->getSecondsActivePlayed()) {
+            if (is_null($roleStat) || $roleStat['secondsActivePlayed'] < $stat['secondsActivePlayed']) {
                 $roleStat = $stat;
             }
         }

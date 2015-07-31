@@ -15,7 +15,7 @@ use Gedmo\Mapping\Annotation as Gedmo;
  * PlayerRoleStat
  *
  * @ORM\Table(name="player_role_stat", uniqueConstraints={@ORM\UniqueConstraint(columns={"player", "role"})})
- * @ORM\Entity
+ * @ORM\Entity(repositoryClass="Erliz\SkyforgeBundle\Repository\PlayerRoleStatRepository")
  */
 class PlayerRoleStat
 {

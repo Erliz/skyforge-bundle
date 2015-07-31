@@ -58,11 +58,11 @@ class ContentExtension extends ApplicationAwareExtension
     }
 
     /**
-     * @param Player $player
+     * @param Player|array $player
      *
      * @return PlayerRoleStat
      */
-    public function longestActiveRoleStat(Player $player)
+    public function longestActiveRoleStat($player)
     {
         return $this->getApp()['player.skyforge.service']->getLongestActiveRoleStat($player);
     }

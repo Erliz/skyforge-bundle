@@ -17,23 +17,6 @@ use Erliz\SkyforgeBundle\Entity\PlayerCollection;
 
 class PlayerRepository extends EntityRepository
 {
-
-    public function getDateStat()
-    {
-        $qb = $this->getEntityManager()->createQueryBuilder();
-
-        $qb->select('pds')
-            ->from('Erliz\SkyforgeBundle\Entity\PlayerDateStat', 'pds')
-            ->where($qb->expr()->eq('pds.player', ':player_id'))
-            ->orderBy('pds.date', Criteria::DESC)
-            ->setParameter('player_id', $this->getId());
-
-        return $qb->getQuery()
-            ->useResultCache(true)
-            ->setResultCacheLifetime(300)
-            ->getResult();
-    }
-
     /**
      * @param CommunityInterface $community
      *
@@ -51,6 +34,30 @@ class PlayerRepository extends EntityRepository
             ->setParameter('community_id', $community->getId());
 
         return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * @param int  $pantheonId
+     * @param bool $asArray
+     *
+     * @return array
+     */
+    public function findByPantheonId($pantheonId, $asArray = false)
+    {
+        $qb = $this->getEntityManager()->createQueryBuilder();
+
+        $qb
+            ->select('p')
+            ->from('Erliz\SkyforgeBundle\Entity\Player', 'p')
+            ->join('p.pantheon', 'pt')
+            ->where($qb->expr()->eq('pt.id', ':pantheon_id'))
+            ->setParameter('pantheon_id', $pantheonId);
+
+        $query = $qb->getQuery()
+            ->useResultCache(true)
+            ->setResultCacheLifetime(1800);
+
+        return $asArray ? $query->getResult(Query::HYDRATE_ARRAY) : $query->getResult();
     }
 
     /**

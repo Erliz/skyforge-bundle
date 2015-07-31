@@ -14,7 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
  * PlayerDateStat
  *
  * @ORM\Table(name="player_date_stat", uniqueConstraints={@ORM\UniqueConstraint(columns={"player", "date"})})
- * @ORM\Entity
+ * @ORM\Entity(repositoryClass="Erliz\SkyforgeBundle\Repository\PlayerDateStatRepository")
  */
 class PlayerDateStat
 {
