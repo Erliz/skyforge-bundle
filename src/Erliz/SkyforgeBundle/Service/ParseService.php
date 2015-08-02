@@ -571,7 +571,11 @@ class ParseService
         } else {
             $name = '';
         }
-        $role = $pageXPath->query("//p[@class='avatar-rank']/span")->item(0)->textContent;
+        if ($pageXPath->query("//p[@class='avatar-rank']/span")->length) {
+            $role = $pageXPath->query("//p[@class='avatar-rank']/span")->item(0)->textContent;
+        } else {
+            $role = '';
+        }
         $pantheonString = $pageXPath->query("//div[@class='avatar-stat']//div[@class='ubox-title']/a/@href");
         $pantheonId = null;
         if ($pantheonString->length) {

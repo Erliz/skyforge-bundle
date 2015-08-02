@@ -127,7 +127,7 @@ class StatService extends ApplicationAwareService
         }
         $currentRole = $this->roleRepo->findOneBy(array('name' => $avatarData['role_name']));
         if (empty($currentRole)) {
-            $currentRole = $this->roleRepo->findOneBy(array('name' => 'Храмовник'));
+            $currentRole = $this->roleRepo->find(1);
         }
         $today = new \DateTime('-4 hour');
         $shownDates = $statData->avatarStats->daysToShow;
