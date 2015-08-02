@@ -76,13 +76,20 @@ EOF
 
         $communitiesCount = count($communityIds);
 
+        $lastId = $input->getOption('lastId');
         foreach ($communityIds as $index => $communityId) {
+            if ($communityId == $lastId){
+                $lastId = false;
+            }
+            if ($lastId) {
+                continue;
+            }
             $arguments = new ArrayInput(array('--id' => $communityId, '-r' => $input->getOption('region')));
 
             $pantheonInfoCommand->run($arguments, $output);
             $playersStatCommand->run($arguments, $output);
-            $pantheonDateStatCommand->run($arguments, $output);
             $this->logger->addInfo(sprintf('Processed %s / %s', $index + 1, $communitiesCount));
+            $pantheonDateStatCommand->run($arguments, $output);
         }
     }
 
@@ -90,6 +97,7 @@ EOF
     {
         return array(
             new InputOption('region', 'r', InputOption::VALUE_REQUIRED, 'region of skyforge project'),
+            new InputOption('lastId', 'l', InputOption::VALUE_REQUIRED, 'id of last parsed community'),
             new InputOption('ids', 'i', InputOption::VALUE_OPTIONAL, 'Pantheons ids'),
         );
     }
