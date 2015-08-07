@@ -61,7 +61,7 @@ EOF
         $pantheonDateStatCommand->setProjectApplication($app);
 
         if ($input->getOption('ids')) {
-            $communityIds = $input->getOption('ids');
+            $communityIds = array($input->getOption('ids'));
         } else {
             $sqlResponse = $em->createQuery(
                 "SELECT pt.id, count(pl.id) cnt
