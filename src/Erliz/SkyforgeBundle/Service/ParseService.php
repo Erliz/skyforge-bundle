@@ -12,6 +12,7 @@ use DOMXPath;
 use Erliz\SkyforgeBundle\Extension\Client\CookieJar;
 use GuzzleHttp\Client as Client;
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\ServerException;
 use GuzzleHttp\Message\ResponseInterface;
 use GuzzleHttp\Post\PostBodyInterface;
 use GuzzleHttp\Subscriber\Cookie;
@@ -34,6 +35,8 @@ class ParseService
     private $regionService;
     /** @var History */
     private $history;
+    /** @var int */
+    private $maxAttempts = 3;
 
     public function __construct(RegionService $regionService, $cachePath)
     {
@@ -184,10 +187,20 @@ class ParseService
             $request = $this->client->createRequest('GET', $url, array('headers' => $headers));
         }
 
-        try {
-            $response = $this->client->send($request);
-        } catch (ClientException $e) {
-            $response = $e->getResponse();
+        for ($attempts = 0; $attempts < $this->maxAttempts; $attempts++) {
+            try {
+                $response = $this->client->send($request);
+                break;
+            } catch (ServerException $e) {
+                // 504 or 502
+                sleep(1);
+                if ($attempts == $this->maxAttempts) {
+                    throw $e;
+                }
+            } catch (ClientException $e) {
+                $response = $e->getResponse();
+                break;
+            }
         }
 
         $this->exportCookie();
@@ -262,6 +275,10 @@ class ParseService
 
     private function authorize()
     {
+        if ($this->regionService->getRegion() != RegionService::RU_REGION) {
+            throw new RuntimeException('Need authorize', 403);
+        }
+
         $this->createClient(true, true);
 
         $authOptions = $this->regionService->getAuthOptions();

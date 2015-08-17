@@ -169,41 +169,39 @@ EOF
     {
         $this->logger->addInfo(sprintf('Checking %s "%s" with %s', $type, $community->getName(), $community->getId()));
         $members = array();
-        if ($this->regionService->getRegion() == RegionService::RU_REGION) {
-            try {
-                for($page = 1; $page <= 20; $page++) {
+        try {
+            for($page = 1; $page <= 20; $page++) {
+
+                if ($this->regionService->getRegion() == RegionService::RU_REGION) {
                     $responseMessage = $this->parseService->getPage(
                         $this->makeCommunityMembersMoreUrl($community->getId()),
                         true,
                         $this->makeCommunityMembersUrl($community->getId()),
                         array('t:zone' => 'bunchZone', 'bunchIndex' => $page)
                     );
-
                     $response = json_decode($responseMessage);
-                    if (!$response) {
-                        $this->logger->addInfo(sprintf('Empty page %s', $page));
-                        break;
-                    }
-                    $pageMembers = $this->parseService->getMembersFromCommunityPage($response->content);
-                    $this->logger->addInfo(sprintf('Page %s parsed successful, get %s members', $page, count($pageMembers)));
-                    $members = $members + $pageMembers;
-                    usleep(rand(500, 1500) * 1000);
-                }
-            } catch (RuntimeException $e) {
-                $this->logger->addInfo('Exception: ' . $e->getMessage() . ' ' . $e->getCode());
-            }
-        } else {
-            $response = $this->parseService->getPage($this->makeCommunityMembersUrl($community->getId()));
-            try {
-                $members = $this->parseService->getMembersFromCommunityPage($response);
-            } catch (RuntimeException $e) {
-                if ($e->getCode() == 50) {
-                    $this->logger->addWarning($e->getMessage());
                 } else {
-                    throw $e;
+                    $response = $this->parseService->getPage(
+                        $this->makeCommunityMembersUrl($community->getId()).'?page='.$page,
+                        false,
+                        $this->makeCommunityMembersUrl($community->getId())
+                    );
                 }
+                if (!$response) {
+                    $this->logger->addInfo(sprintf('Empty page %s', $page));
+                    break;
+                }
+                if ($this->regionService->getRegion() == RegionService::RU_REGION) {
+                    $pageMembers = $this->parseService->getMembersFromCommunityPage($response->content);
+                } else {
+                    $pageMembers = $this->parseService->getMembersFromCommunityPage($response);
+                }
+                $this->logger->addInfo(sprintf('Page %s parsed successful, get %s members', $page, count($pageMembers)));
+                $members = $members + $pageMembers;
+                usleep(rand(500, 1500) * 1000);
             }
-            $this->logger->addInfo(sprintf('Page %s parsed successful, get %s members', 1, count($members)));
+        } catch (RuntimeException $e) {
+            $this->logger->addInfo('Exception: ' . $e->getMessage() . ' ' . $e->getCode());
         }
 
         if ($type == $this::TYPE_PANTHEON) {
