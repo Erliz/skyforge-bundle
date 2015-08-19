@@ -18,7 +18,8 @@
         "erliz/silex-common-bundle": "dev-master",
         "guzzlehttp/guzzle": "~5.0",
         "gedmo/doctrine-extensions": "~2.3",
-        "kuikui/memcache-service-provider": "~1.1"
+        "kuikui/memcache-service-provider": "~1.1",
+        "jonnyw/php-phantomjs": "4.0.x-dev"
     },
     "require-dev": {
         "phpunit/phpunit": "~4.7"
