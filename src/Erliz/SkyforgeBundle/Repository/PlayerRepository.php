@@ -79,7 +79,7 @@ class PlayerRepository extends EntityRepository
             ->getQuery()
             ->setParameters($params)
             ->useResultCache(true)
-            ->setResultCacheLifetime(300)
+            ->setResultCacheLifetime(1800)
             ->getResult()
         );
     }
@@ -103,7 +103,7 @@ class PlayerRepository extends EntityRepository
             ->getQuery()
             ->setParameters($params)
             ->useResultCache(true)
-            ->setResultCacheLifetime(300)
+            ->setResultCacheLifetime(1800)
             ->getResult()
         );
     }
@@ -129,7 +129,7 @@ class PlayerRepository extends EntityRepository
                 ->createQuery($dql)
                 ->setParameters($params)
                 ->useResultCache(true)
-                ->setResultCacheLifetime(300)
+                ->setResultCacheLifetime(1800)
                 ->getResult(Query::HYDRATE_ARRAY)
         );
     }

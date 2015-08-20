@@ -65,7 +65,7 @@ class PantheonService extends ApplicationAwareService
         $result = $this->getEntityManager()
             ->createQuery($dql)
             ->useResultCache(true)
-            ->setResultCacheLifetime(300)
+            ->setResultCacheLifetime(1800)
             ->getResult();
         return new ArrayCollection(array_slice($result, 0, 100));
     }

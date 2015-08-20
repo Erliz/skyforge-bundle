@@ -44,7 +44,7 @@ class PlayerService extends ApplicationAwareService
             $this->getEntityManager()
                 ->createQuery($dql)
                 ->useResultCache(true)
-                ->setResultCacheLifetime(300)
+                ->setResultCacheLifetime(1800)
                 ->setMaxResults(1000)
                 ->getResult(Query::HYDRATE_ARRAY)
         );
