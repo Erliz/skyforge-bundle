@@ -1,3 +1,4 @@
+[![License](https://poser.pugx.org/erliz/skyforge-bundle/license)](https://packagist.org/packages/erliz/skyforge-bundle)
 # Skyfoge Bundle
 ### Skyfoge Bundle is part of [sfstat.info](http://sfstat.info)
 
