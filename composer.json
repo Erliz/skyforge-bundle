@@ -1,6 +1,7 @@
 {
     "name": "erliz/skyforge-bundle",
-    "type": "project",
+    "type": "library",
+    "license": "GPL-3.0",
     "description": "Skyforge statistic parse bundle",
     "authors": [
         {
